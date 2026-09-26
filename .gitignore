@@ -37,3 +37,17 @@ Thumbs.db
 *.ntvs*
 *.njsproj
 
+# Database Files
+*.sqlite
+**.sqlite3
+**.db
+**.sql
+**.db-journal
+**.bak
+**.backup
+**.dump
+
+# Miscellaneous
+*.swp
+*.sass-cache
+**.pid
