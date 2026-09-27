@@ -9,8 +9,8 @@
     // See also https://aka.ms/tsconfig/module
     "module": "es2022",
     "target": "es2022",
-    "types": ["chrome"],
-    "moduleResolution": "node",
+    "types": ["@types/chrome"],
+    "moduleResolution": "bundler",
     // For nodejs:
     "lib": ["es2022", "DOM", "DOM.Iterable"],
     // "types": ["node"],
@@ -41,5 +41,8 @@
     "noUncheckedSideEffectImports": true,
     "moduleDetection": "force",
     "skipLibCheck": true,
-  }
+    "esModuleInterop": true,
+  },
+  "include": ["src/**/*"],
+  "exclude": ["node_modules", "build", "*.spec.ts", "*.test.ts"]
 }
