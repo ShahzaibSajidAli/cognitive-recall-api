@@ -1,0 +1,29 @@
+{
+  "manifest_version": 3,
+  "name": "Socratic AI Video Questioner",
+  "description": "Runs a script on www.example.com automatically when user installs the extension",
+  "version": "1.0",
+  "icons": {
+    "16": "src/icons/icon-16.png",
+    "32": "src/icons/icon-32.png",
+    "48": "src/icons/icon-48.png",
+    "128": "src/icons/icon-128.png"
+  },
+  "action": {
+    "default_icon": {
+        "16": "src/icons/icon-16.png",
+        "24": "src/icons/icon-24.png",
+        "32": "src/icons/icon-32.png"
+    }
+  },
+  "content_scripts": [
+    {
+      "js": [
+        "content-script.js"
+      ],
+      "matches": [
+        "http://*.example.com//"
+      ]
+    }
+  ]
+}
