@@ -3,30 +3,38 @@
   "name": "Socratic AI Video Questioner",
   "description": "This extension allows users to ask questions about YouTube videos using Socratic AI.",
   "version": "1.0",
+  "permissions": [
+    "tabs"
+  ],
   "icons": {
-    "16": "./icons/icon-16.png",
-    "32": "./icons/icon-32.png",
-    "48": "./icons/icon-48.png",
-    "128": "./icons/icon-128.png"
+    "16": "icons/icon-16.png",
+    "32": "icons/icon-32.png",
+    "48": "icons/icon-48.png",
+    "128": "icons/icon-128.png"
   },
   "action": {
     "default_icon": {
-        "16": "./icons/icon-16.png",
-        "24": "./icons/icon-24.png",
-        "32": "./icons/icon-32.png"
-    }
+      "16": "icons/icon-16.png",
+      "24": "icons/icon-24.png",
+      "32": "icons/icon-32.png"
+    },
+    "default_popup": "popup.html"
   },
-  "service-worker": {
-    "src": "./dist/background-script.js"
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
   },
   "content_scripts": [
     {
       "js": [
-        "./dist/content-script.js"
+        "content.js"
       ],
       "matches": [
         "https://*.youtube.com/watch?*"
       ]
     }
+  ],
+  "host_permissions": [
+    "http://localhost:3000/*"
   ]
 }
