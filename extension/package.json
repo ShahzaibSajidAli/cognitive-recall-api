@@ -6,14 +6,16 @@
   "main": "index.js",
   "scripts": {
     "dev": "vite",
-    "build": "vite build",
+    "build": "tsc && vite build",
     "preview": "vite preview"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "devDependencies": {
+    "@trpc/client": "^11.19.0",
     "@types/chrome": "^0.3.0",
+    "@types/node": "^26.6.3",
     "typescript": "^7.0.2",
     "vite": "^8.3.1"
   }
