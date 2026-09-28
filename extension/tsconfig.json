@@ -2,19 +2,21 @@
   // Visit https://aka.ms/tsconfig to read more about this file
   "compilerOptions": {
     // File Layout
-    "rootDir": "./src",
+    "rootDir": "../",
     "outDir": "./build",
+    "noEmit": true,
 
     // Environment Settings
     // See also https://aka.ms/tsconfig/module
     "module": "es2022",
     "target": "es2022",
-    "types": ["@types/chrome"],
+    "types": ["@types/chrome", "chrome"],
     "moduleResolution": "bundler",
     // For nodejs:
     "lib": ["es2022", "DOM", "DOM.Iterable"],
     // "types": ["node"],
     // and npm install -D @types/node
+
 
     // Other Outputs
     "sourceMap": true,
