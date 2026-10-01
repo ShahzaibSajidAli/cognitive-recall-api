@@ -1,0 +1,114 @@
+/* 1. Base Document Layout & Reset */
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+}
+
+body {
+    background-color: #f8fafc;
+    color: #1e293b;
+}
+
+/* Chrome extensions need explicit widths on the main container block */
+.extension-container {
+    width: 360px;
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+/* 2. Header Branding Design */
+.app-header {
+    border-bottom: 1px solid #e2e8f0;
+    padding-bottom: 8px;
+}
+
+.app-title {
+    font-size: 18px;
+    font-weight: 700;
+    color: #4f46e5; /* Modern Indigo */
+}
+
+.app-subtitle {
+    font-size: 12px;
+    color: #64748b;
+    margin-top: 2px;
+}
+
+/* 3. Interactive Call-To-Action Button */
+.action-btn {
+    width: 100%;
+    padding: 12px;
+    background-color: #4f46e5;
+    color: #ffffff;
+    border: none;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background-color 0.2s ease, transform 0.1s ease;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.action-btn:hover {
+    background-color: #4338ca;
+}
+
+.action-btn:active {
+    transform: scale(0.98);
+}
+
+/* 4. Mapped Card Output Canvas Layout */
+.output-card {
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    padding: 16px;
+    min-height: 80px;
+    max-height: 300px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+}
+
+.output-content {
+    width: 100%;
+    font-size: 13.5px;
+    line-height: 1.6;
+    color: #334155;
+    white-space: pre-wrap; /* Maintains spacing readability cleanly */
+}
+
+/* Utility State Modifiers */
+.hidden {
+    display: none !important;
+}
+
+.error-text {
+    color: #dc2626 !important;
+    font-weight: 500;
+}
+
+/* 5. Minimalist Circular CSS Loading Spinner */
+.spinner {
+    width: 28px;
+    height: 28px;
+    border: 3px solid #e2e8f0;
+    border-top-color: #4f46e5; /* Animates using primary system tint */
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+    margin: 12px 0;
+}
+
+/* Spin Animation Frame Blueprint */
+@keyframes spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
