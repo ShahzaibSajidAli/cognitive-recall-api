@@ -7,33 +7,20 @@ export const youtubeRouter = router({
     .input(
         z.object({
             videoUrl: z.string().url({message: 'Invalid Youtube URL Format'}),
-            lang: z.string().optional()
         })
     )
     .mutation(async ({input}) => {
-        let transcriptData;
         try {
             const { videoUrl } = input;
-            transcriptData = await YoutubeTranscript.fetchTranscript(videoUrl, {
-                lang: input.lang || 'en'
-            });
+            const transcriptData = await YoutubeTranscript.fetchTranscript(videoUrl);
             return {
                 success: true,
                 transcript: transcriptData
             }
         }
         catch(error) {
-            try {
-                transcriptData = await YoutubeTranscript.fetchTranscript(input.videoUrl);
-                return {
-                    success: true,
-                    transcript: transcriptData
-                }
-            }
-            catch(fallbackError) {
-                console.error("tRPC transcript fetch failed", fallbackError);
+                console.error("tRPC transcript fetch failed", error);
                 throw new Error('Could not fetch transcript. Ensure the video has captions.');
-            }
         }
     })
 })
