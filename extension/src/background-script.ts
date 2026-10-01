@@ -1,5 +1,4 @@
 import { createTRPCProxyClient, httpBatchLink } from "@trpc/client";
-// Make sure this path points correctly to your backend type definition
 import type { youtubeRouterType } from "../../backend/src/youtubeRouter";
 
 export const trpcClient = createTRPCProxyClient<youtubeRouterType>({
@@ -10,46 +9,52 @@ export const trpcClient = createTRPCProxyClient<youtubeRouterType>({
     ]
 });
 
+async function handleFetch(sendResponse: (response: any) => void, lang: string) {
+    try {
+        console.log('handleFetch routine started. Querying active tab...');
+        
+        // Use destructuring [tab] to cleanly pull index 0 directly out of the array
+        const [tab] = await chrome.tabs.query({
+            active: true,
+            currentWindow: true
+        });
+
+        if (!tab || !tab.url) {
+            console.log('Validation failed: No active tab or URL properties found.');
+            sendResponse({ success: false, error: 'No active tab found or tab has no URL.' });
+            return;
+        }
+
+        const currentUrl = tab.url;
+        console.log('Extension captured active URL:', currentUrl);
+
+        // Standardized validation rule checking
+        if (!currentUrl.includes('youtube.com') && !currentUrl.includes('youtu.be')) {
+            console.log('Validation failed: URL is not a YouTube path.');
+            sendResponse({ success: false, error: 'Please open a valid YouTube video page.' });
+            return;
+        }
+
+        console.log('Sending mutation request to tRPC Fastify backend...');
+        
+        const response = await trpcClient.getTranscript.mutate({
+            videoUrl: currentUrl,
+            lang: lang
+        });
+
+        console.log('Success! Backend sent back the transcript:', response.transcript);
+        sendResponse({ success: true, transcript: response.transcript });
+    }
+    catch (error: any) {
+        console.error('Fatal failure inside asynchronous execution path:', error);
+        sendResponse({ success: false, error: error.message || 'Unknown network error occurred.' });
+    }
+}
+
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-    // 🚨 FIX: Remove 'sender.tab' validation from here because the sender is your popup window, not the webpage!
     if (message.action === 'TRIGGER_FETCH') {
         console.log('Background script received message from popup.ts', message);
-
-        (async () => {
-            try {
-                const [tab]: chrome.tabs.Tab[] = await chrome.tabs.query({
-                    active: true,
-                    currentWindow: true
-                });
-
-                if (!tab || !tab.url) {
-                    sendResponse({ success: false, error: 'No active tab found or tab has no URL.' });
-                    return;
-                }
-
-                const currentUrl = tab.url;
-
-                // 🔒 Security Check: Validate the target URL inside the tab context instead
-                if (!currentUrl.includes('://youtube.com')) {
-                    sendResponse({ success: false, error: 'Please open a valid YouTube video page.' });
-                    return;
-                }
-
-                console.log('Extension captured active URL:', currentUrl);
-
-                // This variable initializes properly within the logical pathway
-                const response = await trpcClient.getTranscript.mutate({
-                    videoUrl: currentUrl
-                });
-
-                sendResponse({ success: true, transcript: response.transcript });
-                console.log('Success! Backend sent back the transcript:', response.transcript);
-            }
-            catch (error: any) {
-                console.error('Failed to communicate with backend.', error);
-                sendResponse({ success: false, error: error.message || 'Unknown error occurred.' });
-            }
-        })();
-        return true; // Indicates that the response will be sent asynchronously
+        handleFetch(sendResponse, message.language);
+        return true; // Keeps channel alive safely
     }
 });
