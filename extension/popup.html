@@ -4,10 +4,32 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Socratic AI</title>
+    <!-- Add connection to your CSS stylesheet -->
+    <link rel="stylesheet" href="./src/popup/popup.css">
 </head>
 <body>
-    <button id="btn">Click Here</button>
-    <div id="output"></div>
+    <div class="extension-container">
+        <header class="app-header">
+            <h1 class="app-title">Socratic AI</h1>
+            <p class="app-subtitle">YouTube Transcript Assistant</p>
+        </header>
+
+        <main class="app-body">
+            <button id="btn" class="action-btn">Fetch Transcript</button>
+            <div class="input-group">
+                <label for="inputLanguage" class="input-label">Target Language</label>
+                <input type="text" id="inputLanguage" class="text-input" placeholder="e.g., Spanish(es), Urdu(ur), Hindi(hi), French(fr).."></input>
+            </div>
+            <!-- Structural state wrapper for visual outputs -->
+            <div id="output-wrapper" class="output-card hidden">
+                <!-- Smooth Minimalist CSS Spinner Component -->
+                <div id="loader" class="spinner hidden"></div>
+                <!-- Clean Typography Output Container -->
+                <div id="output" class="output-content"></div>
+            </div>
+        </main>
+    </div>
+
+    <script type="module" src="./src/popup/popup.ts"></script>
 </body>
-<script type="module" src="./src/popup/popup.ts"></script>
 </html>
