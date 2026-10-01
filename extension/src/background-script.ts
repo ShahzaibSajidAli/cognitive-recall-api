@@ -38,8 +38,7 @@ async function handleFetch(sendResponse: (response: any) => void, lang: string) 
         console.log('Sending mutation request to tRPC Fastify backend...');
         
         const response = await trpcClient.getTranscript.mutate({
-            videoUrl: currentUrl,
-            lang: lang
+            videoUrl: currentUrl
         });
 
         console.log('Success! Backend sent back the transcript:', response.transcript);
