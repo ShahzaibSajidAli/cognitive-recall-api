@@ -9,7 +9,7 @@ export const trpcClient = createTRPCProxyClient<youtubeRouterType>({
     ]
 });
 
-async function handleFetch(sendResponse: (response: any) => void, lang: string) {
+async function handleFetch(sendResponse: (response: any) => void) {
     try {
         console.log('handleFetch routine started. Querying active tab...');
         
@@ -52,8 +52,8 @@ async function handleFetch(sendResponse: (response: any) => void, lang: string) 
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     if (message.action === 'TRIGGER_FETCH') {
-        console.log('Background script received message from popup.ts', message);
-        handleFetch(sendResponse, message.language);
+        console.log('Background script received message from popup.ts');
+        handleFetch(sendResponse);
         return true; // Keeps channel alive safely
     }
 });
