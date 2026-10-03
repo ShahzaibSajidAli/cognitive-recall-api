@@ -85,6 +85,27 @@ body {
     white-space: pre-wrap; /* Maintains spacing readability cleanly */
 }
 
+/* Container card for the question */
+.question-card {
+  padding: 1rem;                  /* p-4 */
+  margin-top: 0.5rem;             /* my-2 (top) */
+  margin-bottom: 0.5rem;          /* my-2 (bottom) */
+  border: 1px solid #e5e7eb;      /* border border-gray-200 */
+  border-radius: 0.5rem;          /* rounded-lg */
+  background-color: #ffffff;      /* bg-white */
+  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05); /* shadow-sm */
+  
+  /* Smooth loading animation hook if needed later */
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+/* Optional hover state effect to make it feel premium */
+.question-card:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+}
+
+
 /* Utility State Modifiers */
 .hidden {
     display: none !important;
