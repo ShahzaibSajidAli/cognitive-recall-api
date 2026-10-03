@@ -1,21 +1,24 @@
 import { z } from 'zod';
 import { router, procedure } from './trpc.js';
 import { YoutubeTranscript } from 'youtube-transcript'
+import { aiResponse } from './aiResponser.js';
 
 export const youtubeRouter = router({
     getTranscript: procedure 
     .input(
         z.object({
-            videoUrl: z.string().url({message: 'Invalid Youtube URL Format'}),
+            videoUrl: z.string().min(1, { message: 'URL cannot be empty' }),
+            language: z.string()
         })
     )
     .mutation(async ({input}) => {
         try {
-            const { videoUrl } = input;
+            const { videoUrl, language } = input;
             const transcriptData = await YoutubeTranscript.fetchTranscript(videoUrl);
+            const aiOutput = await aiResponse(transcriptData, language);
             return {
                 success: true,
-                transcript: transcriptData
+                output: aiOutput
             }
         }
         catch(error) {
