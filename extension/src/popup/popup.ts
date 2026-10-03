@@ -40,11 +40,14 @@ else {
             }
             // 4. Handle Successful responses
             else {
-                const text = response.transcript.map((item: any) => item.text);
-                const paragraph = text.join(' ');
-                
-                // <-- FIXED: Assigned the clean paragraph string instead of raw array
-                output.textContent = paragraph || 'No transcript available for this video.'; 
+                const questions = response.output.questions;
+                output.innerHTML = "";
+                for(const question of questions) {
+                    const questionCard = document.createElement("div");
+                    questionCard.className = "question-card"
+                    questionCard.innerHTML = `<h3 class=question-text>${question}</h3>`;
+                    output.appendChild(questionCard); 
+                }
             }
         }
         catch (error: any) {

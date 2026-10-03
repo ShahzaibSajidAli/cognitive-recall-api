@@ -9,10 +9,10 @@ export const trpcClient = createTRPCProxyClient<youtubeRouterType>({
     ]
 });
 
-async function handleFetch(sendResponse: (response: any) => void) {
+async function handleFetch(sendResponse: (response: any) => void, lang: string) {
     try {
         console.log('handleFetch routine started. Querying active tab...');
-        
+
         // Use destructuring [tab] to cleanly pull index 0 directly out of the array
         const [tab] = await chrome.tabs.query({
             active: true,
@@ -36,13 +36,14 @@ async function handleFetch(sendResponse: (response: any) => void) {
         }
 
         console.log('Sending mutation request to tRPC Fastify backend...');
-        
+
         const response = await trpcClient.getTranscript.mutate({
-            videoUrl: currentUrl
+            videoUrl: currentUrl,
+            language: lang
         });
 
-        console.log('Success! Backend sent back the transcript:', response.transcript);
-        sendResponse({ success: true, transcript: response.transcript });
+        console.log('Success! Backend sent back the transcript:', response.output);
+        sendResponse({ success: true, output: response.output });
     }
     catch (error: any) {
         console.error('Fatal failure inside asynchronous execution path:', error);
@@ -53,7 +54,7 @@ async function handleFetch(sendResponse: (response: any) => void) {
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     if (message.action === 'TRIGGER_FETCH') {
         console.log('Background script received message from popup.ts');
-        handleFetch(sendResponse);
+        handleFetch(sendResponse, message.language);
         return true; // Keeps channel alive safely
     }
 });
