@@ -16,5 +16,10 @@
     "@types/node": "^26.6.3",
     "fastify": "^5.12.5",
     "typescript": "^7.0.2"
+  },
+  "dependencies": {
+    "@ai-sdk/openai-compatible": "^3.0.62",
+    "@openrouter/ai-sdk-provider": "^3.1.0",
+    "ai": "^7.0.127"
   }
 }
