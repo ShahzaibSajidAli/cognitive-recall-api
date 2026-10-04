@@ -23,57 +23,82 @@ if (!process.env.GEMINI_API_KEY) {
 }
 
 const geminiAI = createGoogleGenerativeAI({
-    apiKey: process.env.GEMINI_API_KEY!,
-})
+    apiKey: process.env.GEMINI_API_KEY!});
+
+const aiModel = geminiAI("gemini-3.1-flash-lite");
+
+const SYSTEM_PROMPT = `
+You are a Socratic tutor that turns a YouTube video transcript into active-recall study material.
+
+GROUNDING RULES (highest priority)
+1. Use ONLY information stated in the transcript. Never add outside facts, examples, or topics.
+2. Every question must be answerable from a specific passage of the transcript.
+3. Every timestampSeconds must be copied from a [Ns] marker in the transcript, at the line where the answer is given. Never invent or estimate a timestamp.
+4. If the transcript is too short, unclear, or empty of educational content, return fewer items instead of padding. An empty array is valid.
+5. Ignore sponsor reads, intros, "like and subscribe", and small talk.
+
+QUESTION QUALITY
+- Write Socratic questions that test understanding: "why", "how", "what would happen if", "what is the difference between". Avoid yes/no questions and trivia such as names, numbers, or exact wording.
+- Cover the video's main ideas in order, spread across the whole video rather than only the start.
+- Each question must stand alone: a learner who has not just watched the video should still understand it, so never write "the speaker said" or "in this part".
+- One idea per question; no duplicates or near-duplicates.
+
+CODING PRACTICE
+- Create exercises ONLY when the video teaches programming, scripting, query writing, configuration, or a formula-based technique.
+- Each exercise must practice a concept the video actually explains, and the task must be a clear action ("Write a function that...", "Fix the bug in...").
+- Provide short starter code (3-25 lines) that is syntactically valid, with TODO comments marking what the learner must complete. Do not give the full solution.
+- Use the language and tools used in the video. If none is stated, choose the most natural one.
+- If the video is not about code, return an empty coding array. Do not invent unrelated code.
+
+OUTPUT LANGUAGE
+- Write all questions and tasks in the requested target language. Keep code, identifiers, and technical terms in their original form.
+`.trim();
+
+const buildPrompt = (opts: { transcriptText: string, language: string, videoTitle?: string}) => `
+Target language: ${opts.language}
+${opts.videoTitle ? `Video title: ${opts.videoTitle}\n` : ''}
+Each line of the transcript below starts with its time in seconds, like [125s].
+
+<transcript>
+${opts.transcriptText}
+</transcript>
+
+Task:
+1. Write 8-12 Socratic questions (fewer if the transcript is short), each with the timestampSeconds where its answer appears.
+2. If the video teaches code, write 2-4 practice exercises as described in your rules; otherwise return an empty coding array.
+3. Before finalizing, check each question against the transcript. Remove any you cannot support with a specific line.
+`.trim()
 
 const TranscriptQuestions = z.object({
-    title: z.string().describe("The Title of The Youtube Video"),
-    language: z.string().describe("The language of the transcript, e.g., 'en' for English."),
-    questions: z.array(z.string()).describe("The array of questions related to the transcript."),
-    timestamps: z.array(z.string()).describe("The array of timestamps corresponding to each question.If a question does not have a timestamp, it should be represented as an empty string."),
-    codingPractices: z.object({
-        code: z.array(z.string()).describe("The array of code snippets that demonstrate coding practices relevant to the transcript content."),
-        lang: z
-            .string()
-            .default("text")
-            .describe("The programming language identifier used by the syntax highlighter, such as 'typescript' or 'json'."),
+    title: z.string().describe("The title of the YouTube video"),
+    language: z.string().describe("Language code of the output, e.g. 'en'"),
+    questions: z.object({
+        general: z.array(z.object({
+            question: z.string().describe("A clear question about the video content"),
+            timestampSeconds: z.number().describe("Second in the video where the answer is discussed; use the transcript's [Ns] markers"),
+        })).describe("Conceptual questions based on the transcript"),
+        coding: z.array(z.object({
+            task: z.string().describe("A short practice task the learner should complete"),
+            code: z.string().describe("Starter or example code for the task"),
+            lang: z.string().describe("Syntax highlighter language id, e.g. 'typescript'"),
+            filename: z.string().describe("Label for the code block, e.g. 'app.ts'"),
+        })).describe("Coding practice exercises related to the video"),
+    }),
+});
 
-        filename: z
-            .string()
-            .optional()
-            .describe("An optional label or system file path displayed at the top bar of the code block layout."),
-
-        highlightLines: z
-            .array(z.number())
-            .optional()
-            .describe("An optional list of absolute 1-indexed line numbers that should receive visual emphasis or highlight animations."),
-
-        diff: z
-            .object({
-                added: z.array(z.number()).describe("Line numbers containing newly introduced code modifications."),
-                removed: z.array(z.number()).describe("Line numbers containing removed or deprecated code blocks."),
-            })
-            .optional()
-            .describe("Metadata highlighting line-by-line diff variations inside git or code change snippets."),
-    }).describe("Defines the exact structure, constraints, and runtime attributes for processing browser code elements."),
-})
-
-export const aiResponse = async (transcript: unknown, language: string) => {
+export const aiResponse = async (transcript: string, language: string) => {
     try {
         console.log("Generating questions based on the transcript and translating to:", language);
         const { output } = await generateText({
-            model: geminiAI("gemini-3.8-flash"),
+            model: aiModel,
             output: Output.object({
                 schema: TranscriptQuestions
             }),
-            system: "You are a precise data extraction agent. You must respond ONLY with a clean JSON object conforming strictly to the requested schema. No markdown backticks, no introductory text.",
-            prompt: `You are a helpful assistant that generates questions based on the transcript of a youtube video. You have the following transcript: ${transcript}. Now, generate a list of questions that are relevant to the content of the transcript. The questions should be clear, concise, and thought-provoking. Additionally, even if there are no coding practices in the video, you must provide a coding practice example that is relevant to the content of the transcript. The coding practice should include a code snippet, the programming language used, and any relevant explanations or comments. This is the target language for the questions and coding practices: ${language}. Sometimes you mismatch with the transcript of the video so never do that and force yourself to match the transcript`,
+            system: SYSTEM_PROMPT,
+            prompt: buildPrompt({ transcriptText: transcript, language }),
+            temperature: 0.3,
         })
-        const parsedOutput = TranscriptQuestions.parse(output);
-        console.log("Questions:", parsedOutput.questions);
-        console.log("Timestamps:", parsedOutput.timestamps);
-        console.log("Coding Practices:", parsedOutput.codingPractices.code);
-        return parsedOutput;
+
     }
     catch (error: any) {
         console.error("Error generating questions:", error);
