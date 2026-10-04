@@ -16,8 +16,8 @@ else {
     console.log("Production Environment Detected!. Using cloud injected variables.")
 }
 
-if (!process.env.OPENROUTER_API_KEY) {
-    console.error("❌ Error: OPENROUTER_API_KEY is missing. Check your parent directory's .env file.");
+if (!process.env.GEMINI_API_KEY) {
+    console.error("❌ Error: GEMINI_API_KEY is missing. Check your parent directory's .env file.");
     console.error(`Attempted to read from: ${path.resolve(process.cwd(), '.env')}`);
     process.exit(1);
 }
@@ -68,11 +68,6 @@ export const aiResponse = async (transcript: unknown, language: string) => {
             }),
             system: "You are a precise data extraction agent. You must respond ONLY with a clean JSON object conforming strictly to the requested schema. No markdown backticks, no introductory text.",
             prompt: `You are a helpful assistant that generates questions based on the transcript of a youtube video. You have the following transcript: ${transcript}. Now, generate a list of questions that are relevant to the content of the transcript. The questions should be clear, concise, and thought-provoking. Additionally, even if there are no coding practices in the video, you must provide a coding practice example that is relevant to the content of the transcript. The coding practice should include a code snippet, the programming language used, and any relevant explanations or comments. This is the target language for the questions and coding practices: ${language}. Sometimes you mismatch with the transcript of the video so never do that and force yourself to match the transcript`,
-            providerOptions: {
-                openrouter: {
-                    mode: 'json',
-                }
-            }
         })
         const parsedOutput = TranscriptQuestions.parse(output);
         console.log("Questions:", parsedOutput.questions);
