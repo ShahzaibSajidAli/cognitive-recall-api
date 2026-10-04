@@ -15,7 +15,8 @@ export const youtubeRouter = router({
         try {
             const { videoUrl, language } = input;
             const transcriptData = await YoutubeTranscript.fetchTranscript(videoUrl);
-            const aiOutput = await aiResponse(transcriptData, language);
+            const transcriptText = transcriptData.map(item => `[${Math.floor(item.offset/1000)}s] ${item.text}`).join('\n');
+            const aiOutput = await aiResponse(transcriptText, language);
             return {
                 success: true,
                 output: aiOutput
