@@ -98,7 +98,7 @@ export const aiResponse = async (transcript: string, language: string) => {
             prompt: buildPrompt({ transcriptText: transcript, language }),
             temperature: 0.3,
         })
-
+        return output;
     }
     catch (error: any) {
         console.error("Error generating questions:", error);
