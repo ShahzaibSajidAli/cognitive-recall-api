@@ -4,12 +4,19 @@ import fs from 'fs';
 import path from 'path';
 import dotenv from 'dotenv';
 import z from 'zod';
+import { setTimeout } from 'timers/promises';
+
 
 // const __filename = fileURLToPath(import.meta.url)
 // const __dirname = path.dirname(__filename);
-const localEnvPath = path.resolve(process.cwd(), '.env')
+const candidatePaths = [
+    path.resolve(process.cwd(), '.env'),
+    path.resolve(process.cwd(), '../.env'),
+]
 
-if (fs.existsSync(localEnvPath)) {
+const localEnvPath = candidatePaths.find(p => fs.existsSync(p)) || candidatePaths[0];
+
+if (localEnvPath) {
     dotenv.config({ path: localEnvPath });
 }
 else {
@@ -23,7 +30,8 @@ if (!process.env.GEMINI_API_KEY) {
 }
 
 const geminiAI = createGoogleGenerativeAI({
-    apiKey: process.env.GEMINI_API_KEY!});
+    apiKey: process.env.GEMINI_API_KEY!
+});
 
 const aiModel = geminiAI("gemini-3.1-flash-lite");
 
@@ -54,7 +62,7 @@ OUTPUT LANGUAGE
 - Write all questions and tasks in the requested target language. Keep code, identifiers, and technical terms in their original form.
 `.trim();
 
-const buildPrompt = (opts: { transcriptText: string, language: string, videoTitle?: string}) => `
+const buildPrompt = (opts: { transcriptText: string, language: string, videoTitle?: string }) => `
 Target language: ${opts.language}
 ${opts.videoTitle ? `Video title: ${opts.videoTitle}\n` : ''}
 Each line of the transcript below starts with its time in seconds, like [125s].
@@ -87,21 +95,40 @@ const TranscriptQuestions = z.object({
 });
 
 export const aiResponse = async (transcript: string, language: string) => {
-    try {
-        console.log("Generating questions based on the transcript and translating to:", language);
-        const { output } = await generateText({
-            model: aiModel,
-            output: Output.object({
-                schema: TranscriptQuestions
-            }),
-            system: SYSTEM_PROMPT,
-            prompt: buildPrompt({ transcriptText: transcript, language }),
-            temperature: 0.3,
-        })
-        return output;
+    const maxAttempts = 3;
+
+    for (let attempts = 1; attempts <= maxAttempts; attempts++) {
+        try {
+            console.log(`Generating questions (Attempt ${attempts}/${maxAttempts})...`);
+
+            const { output } = await generateText({
+                model: aiModel,
+                output: Output.object({
+                    schema: TranscriptQuestions
+                }),
+                system: SYSTEM_PROMPT,
+                prompt: buildPrompt({ transcriptText: transcript, language }),
+                temperature: 0.3,
+                maxRetries: 0,
+                providerOptions: {
+                    google: {
+                        thinkingConfig: { thinkingBudget: 0 },
+                    },
+                },
+            });
+
+            return output; // Exit immediately on success
+        } catch (error: any) {
+            const isRateLimited = error?.message?.includes("Rate limit exceeded") || error?.message?.includes("429") || error?.status === 429;
+            const waitTime = isRateLimited ? 65_000 : attempts * 10_000; // 65s for rate limit, else exponential backoff
+            console.error(`Error on attempt ${attempts}:`, error?.message || error);
+
+            if (attempts < maxAttempts) {
+                console.log(`Waiting ${waitTime / 1000}s for rolling token limits to clear...`);
+                await setTimeout(waitTime);
+            } else {
+                throw new Error('Failed to generate questions after multiple attempts. Please try again later.');
+            }
+        }
     }
-    catch (error: any) {
-        console.error("Error generating questions:", error);
-        throw new Error('Failed to generate questions. Please check the transcript and try again.');
-    }
-}
+};
