@@ -4,7 +4,16 @@ import type { youtubeRouterType } from "../../backend/src/youtubeRouter";
 export const trpcClient = createTRPCProxyClient<youtubeRouterType>({
     links: [
         httpBatchLink({
-            url: 'http://localhost:3000/trpc'
+            url: 'http://localhost:3000/trpc',
+            fetch(url, options) {
+                const timeoutSignal = AbortSignal.timeout(120_000);
+
+                const combinedSignal = options?.signal ? AbortSignal.any([options?.signal, timeoutSignal]) : timeoutSignal;
+                return fetch(url, {
+                    ...options,
+                    signal: combinedSignal
+                })
+            }
         })
     ]
 });
