@@ -1,3 +1,5 @@
+import { TRPCError } from "@trpc/server";
+
 const btn = document.getElementById('btn');
 const output = document.getElementById('output');
 const outputWrapper = document.getElementById('output-wrapper');
@@ -40,12 +42,12 @@ else {
             }
             // 4. Handle Successful responses
             else {
-                const questions = response.output.questions;
+                const questions = response.output.questions.coding;
                 output.innerHTML = "";
                 for(const question of questions) {
                     const questionCard = document.createElement("div");
                     questionCard.className = "question-card"
-                    questionCard.innerHTML = `<h3 class=question-text>${question}</h3>`;
+                    questionCard.innerHTML = `<h3 class=question-text>Task: ${question.task} & Code: ${question.code}</h3>`;
                     output.appendChild(questionCard); 
                 }
             }
@@ -54,10 +56,16 @@ else {
             // 5. Handle System/Channel disconnection errors
             loader?.classList.add('hidden');
             output.classList.add('error-text');
-            output.textContent = 'Error: Could not reach extension backround script.';
+            output.textContent = 'Error: Could not reach extension background script.';
             console.error('Failed to communicate with background worker.', error);
             chrome.runtime.lastError && console.error('Runtime error:', chrome.runtime.lastError);
-            output.textContent = 'Error: Could not reach extension background script.';
+            if(error instanceof Error) {
+                throw new TRPCError({
+                    message: error.message,
+                    cause: error.cause,
+                    code: "PARSE_ERROR"
+                })
+            }
         }
     });
 }
