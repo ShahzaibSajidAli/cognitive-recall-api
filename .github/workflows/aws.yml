@@ -1,0 +1,25 @@
+name: Test Production Secrets
+
+on:
+  workflow_dispatch: # Allows you to trigger this manually from the "Actions" tab
+
+jobs:
+  test-job:
+    runs-on: ubuntu-latest
+    
+    # 🌟 CRITICAL STEP: Tells GitHub to unlock the "production" environment secrets
+    environment: production
+
+    steps:
+      - name: Verify Secret Availability
+        run: |
+          if [ -z "$MY_TEST_SECRET" ]; then
+            echo "❌ ERROR: The runner cannot see your secret."
+            exit 1
+          else
+            echo "✅ SUCCESS: The secret is securely loaded into the runner!"
+            echo "Note: If you try to 'echo' the secret value, GitHub intentionally masks it as ***"
+          fi
+        env:
+          # 🌟 CRITICAL STEP: Replace YOUR_SECRET_NAME with your exact secret name from GitHub
+          MY_TEST_SECRET: ${{ secrets.EC2_HOST }} 
