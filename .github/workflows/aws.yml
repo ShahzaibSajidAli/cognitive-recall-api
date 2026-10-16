@@ -1,25 +1,44 @@
-name: Test Production Secrets
-
+name: Deploy to EC2
 on:
-  workflow_dispatch: # Allows you to trigger this manually from the "Actions" tab
+  push:
+    branches:
+      - main
 
 jobs:
-  test-job:
+  deploy:
     runs-on: ubuntu-latest
-    
-    # 🌟 CRITICAL STEP: Tells GitHub to unlock the "production" environment secrets
     environment: production
-
     steps:
-      - name: Verify Secret Availability
-        run: |
-          if [ -z "$MY_TEST_SECRET" ]; then
-            echo "❌ ERROR: The runner cannot see your secret."
-            exit 1
-          else
-            echo "✅ SUCCESS: The secret is securely loaded into the runner!"
-            echo "Note: If you try to 'echo' the secret value, GitHub intentionally masks it as ***"
-          fi
+      - name: Checkout Code
+        uses: actions/checkout@v7.0.1
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v6.3.0
+        with:
+          aws-region: ap-southeast-2
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+
+      - name: Login to ECR
         env:
-          # 🌟 CRITICAL STEP: Replace YOUR_SECRET_NAME with your exact secret name from GitHub
-          MY_TEST_SECRET: ${{ secrets.EC2_HOST }} 
+          ECR_REGISTRY: ${{ secrets.ECR_REGISTRY}}
+        run: |
+          aws ecr get-login-password --region ap-southeast-2 | \
+          docker login --username AWS --password-stdin $ECR_REGISTRY \
+          $ECR_REGISTRY/cognitive-recall-api:latest
+
+      - name: Push to ECR
+        run: |
+          docker push \
+          935322849366.dkr.ecr.ap-southeast-2.amazonaws.com/cognitive-recall-api:latest
+
+      - name: Deploy to EC2
+        uses: appleboy/ssh-actions@v1.0.3
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ec2-user
+          key: ${{ secrets.EC2_SSH_KEY }}
+          script: |
+            bash /home/ec2-user/deploy.sh
+          
+          
