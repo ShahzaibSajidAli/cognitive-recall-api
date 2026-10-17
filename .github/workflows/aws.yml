@@ -31,7 +31,7 @@ jobs:
         env:
           ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
           ECR_REPOSITORY: cognitive-recall-api
-          IMAGE_TAG: latest
+          IMAGE_TAG: ${{ github.sha }}
         run: |
           # FIX: Removed trailing backslash so these run as separate sequential commands
           docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
