@@ -1,0 +1,63 @@
+# ==========================================
+# 1. Exclude the Outside Extension Folder
+# ==========================================
+extension/
+
+# ==========================================
+# 2. Ignore Local Dependencies & Build Artifacts
+# ==========================================
+**/node_modules/
+**/dist/
+**/build/
+**/.turbo/
+**/.next/
+out/
+
+# ==========================================
+# 3. Ignore Runtime Environment & Secret Files
+# ==========================================
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+*.env
+**/.env*
+secrets.json
+*.pem
+*.key
+
+# ==========================================
+# 4. Ignore Version Control & CI Configurations
+# ==========================================
+.git/
+.github/
+.gitignore
+.gitattributes
+
+# ==========================================
+# 5. Ignore System Junk & Editor Metadata
+# ==========================================
+.DS_Store
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+.idea/
+.vscode/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.swp
+
+# ==========================================
+# 6. Ignore Documentation & Logs
+# ==========================================
+**/logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+*.md
+LICENSE
