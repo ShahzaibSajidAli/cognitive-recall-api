@@ -1,0 +1,38 @@
+# ==========================================
+# 1. Ignore Local Build Outputs & Node Modules
+# ==========================================
+**/node_modules/
+**/dist/
+**/build/
+
+# ==========================================
+# 2. Exclude Specific Folders (Monorepo Isolation)
+# ==========================================
+# Exclude the extension folder from your backend
+backend/extension/
+
+# Exclude the entire frontend app to keep the backend build fast
+frontend/
+
+# ==========================================
+# 3. Ignore Secrets and Environment Files
+# ==========================================
+.env*
+*.env
+**/.env*
+secrets.json
+
+# ==========================================
+# 4. Ignore Git & CI Configs
+# ==========================================
+.git/
+.github/
+.gitignore
+
+# ==========================================
+# 5. Ignore System Junk & Documentation
+# ==========================================
+.DS_Store
+Thumbs.db
+*.md
+LICENSE
