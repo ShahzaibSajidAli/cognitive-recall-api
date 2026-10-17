@@ -11,7 +11,7 @@ const startServer = async () => {
     try {
 
         await fastify.register(fastifyCors, {
-            origin: "*", // Allow all origins for development; adjust in production
+            origin: process.env.ALLOWED_ORIGIN || '*',
             methods: ["GET", "POST", "OPTIONS"],
             allowedHeaders: ["Content-Type", "Authorization"]
         });
