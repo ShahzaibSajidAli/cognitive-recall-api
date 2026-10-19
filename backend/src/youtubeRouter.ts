@@ -18,11 +18,12 @@ export const youtubeRouter = router({
                 const intervalSeconds = 60;
                 let currentBucket = -1;
                 const { videoUrl, language } = input;
+                const proxyAgent = new HttpsProxyAgent(process.env.SCRAPERAPI_PROXY || "");
                 const transcriptData = await YoutubeTranscript.fetchTranscript(videoUrl, {
                     fetch: (url: any, init?: any) => {
                         return globalThis.fetch(url, {
                             ...init,
-                            agent: new HttpsProxyAgent(process.env.SCRAPERAPI_PROXY || ""),
+                            agent: proxyAgent,
                             headers: {
                                 ...init?.headers,
                                 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
@@ -36,7 +37,7 @@ export const youtubeRouter = router({
                                 'Sec-Fetch-Site': 'none',
                                 'Sec-Fetch-User': '?1'
                             }
-                        })
+                        } as any);
                     }
                 });
                 const transcriptText = transcriptData.reduce((acc, item) => {
