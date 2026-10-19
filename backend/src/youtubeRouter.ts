@@ -1,9 +1,9 @@
-import { z } from 'zod';
+import { any, z } from 'zod';
 import { router, procedure } from './trpc.js';
-import { YoutubeTranscript } from 'youtube-transcript'
 import { aiResponse } from './aiResponser.js';
 import { TRPCError } from '@trpc/server';
 import { HttpsProxyAgent } from 'https-proxy-agent';
+import { getSubtitles } from 'youtube-captions-scraper';
 
 export const youtubeRouter = router({
     getTranscript: procedure
@@ -19,18 +19,18 @@ export const youtubeRouter = router({
                 let currentBucket = -1;
                 const { videoUrl, language } = input;
                 const proxyAgent = new HttpsProxyAgent(process.env.SCRAPERAPI_PROXY || "");
-                const transcriptData = await YoutubeTranscript.fetchTranscript(videoUrl, {
-                    fetch: (url: any, init?: any) => {
-                        return globalThis.fetch(url, {
-                            ...init,
-                            agent: proxyAgent,
-                            headers: {
-                                ...init?.headers,
-                            }
-                        } as any);
-                    }
+                const transcriptData = await getSubtitles({
+                    videoID: videoUrl.split('v=')[1] || videoUrl.split('/').pop() || '',
+                    lang: language,
+                    format: 'json',
+                    agent: proxyAgent
                 });
-                const transcriptText = transcriptData.reduce((acc, item) => {
+                const formatedTranscript = transcriptData.map((item: { text: any; offset: any; }) => ({
+                    text: item.text,
+                    offset: item.offset
+                }));
+                
+                const transcriptText = transcriptData.reduce((acc: any, item: { offset: number; text: any; }) => {
                     const seconds = Math.floor(item.offset / 1000);
                     const bucket = Math.floor(seconds / intervalSeconds) * intervalSeconds;
 
