@@ -5,24 +5,31 @@ import { TRPCError } from '@trpc/server';
 import { HttpsProxyAgent } from 'https-proxy-agent';
 
 function cleanVideoId(url: string): string | null {
-  const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
-  const match = url.match(regExp);
-  
-  // FIX 1: Safely access array index with explicit type assignment to clear undefined check
-  if (match && match[2] && (match[2] as string).length === 11) {
-    return match[2] as string;
-  }
-  
-  // Fallback parser for short URLs or messy captures
   try {
+    // A bulletproof parser that doesn't rely on regex index arrays
     const parsedUrl = new URL(url);
+    
     if (parsedUrl.hostname.includes('youtu.be')) {
-      const pathPart = parsedUrl.pathname.slice(1).split('&')[0];
-      return pathPart ? (pathPart as string) : null;
+      const pathId = parsedUrl.pathname.slice(1).split('&').shift();
+      return pathId || null;
     }
-    const queryPart = parsedUrl.searchParams.get('v');
-    return queryPart ? (queryPart as string) : null;
+    
+    const searchId = parsedUrl.searchParams.get('v');
+    if (searchId) return searchId;
+
+    // Direct string extraction fallback if query parameters are missing
+    const embedMatch = url.match(/\/embed\/([a-zA-Z0-9_-]{11})/);
+    if (embedMatch && embedMatch.length > 1) {
+      return embedMatch.pop() || null;
+    }
+
+    return null;
   } catch {
+    // If standard URL parsing fails, extract using simple string slicing mechanics
+    const watchMatch = url.match(/v=([a-zA-Z0-9_-]{11})/);
+    if (watchMatch && watchMatch.length > 1) {
+      return watchMatch.pop() || null;
+    }
     return null;
   }
 }
@@ -41,7 +48,6 @@ export const youtubeRouter = router({
                 let currentBucket = -1;
                 const { videoUrl, language } = input;
                 
-                // Initialize proxy tunnel via environment configuration
                 const proxyAgent = new HttpsProxyAgent(process.env.SCRAPERAPI_PROXY || "");
                 const videoId = cleanVideoId(videoUrl);
                 
@@ -49,7 +55,7 @@ export const youtubeRouter = router({
                     throw new TRPCError({ code: 'BAD_REQUEST', message: 'Invalid YouTube URL string.' });
                 }
 
-                // Target the exact internal InnerTube mobile API endpoint
+                // Target the core Web InnerTube endpoint for seamless data streaming
                 const targetUrl = 'https://youtube.com';
 
                 const response = await fetch(targetUrl, {
@@ -57,14 +63,16 @@ export const youtubeRouter = router({
                     agent: proxyAgent,
                     headers: {
                         'Content-Type': 'application/json',
-                        'User-Agent': 'com.google.android.youtube/20.10.38 (Linux; U; Android 14)'
+                        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
                     },
                     body: JSON.stringify({
                         context: {
                             client: {
-                                clientName: 'ANDROID',
-                                clientVersion: '20.10.38',
-                                hl: language || 'en'
+                                clientName: 'WEB',
+                                clientVersion: '2.20240110.00.00',
+                                hl: language || 'en',
+                                gl: 'US',
+                                utcOffsetMinutes: 0
                             }
                         },
                         videoId: videoId
@@ -77,24 +85,39 @@ export const youtubeRouter = router({
 
                 const data: any = await response.json();
 
-                // Safely dig into YouTube's inner transcript UI array tree
-                const renderer = data.actions?.[0]?.updateTranscriptAction?.transcriptRenderer?.body?.transcriptBodyRenderer?.cueGroups;
+                // Dig through the nested response tree safely using optional chaining
+                const actions = data.actions;
+                if (!actions || actions.length === 0) {
+                    throw new Error('Transcripts are disabled or unavailable for this video.');
+                }
+
+                const updateAction = actions.shift()?.updateTranscriptAction;
+                const renderer = updateAction?.transcriptRenderer?.body?.transcriptBodyRenderer?.cueGroups;
 
                 if (!renderer) {
                     throw new Error('Transcripts are disabled or unavailable for this video.');
                 }
 
                 const formattedOutput = renderer.map((group: any) => {
-                    const cue = group.transcriptCueGroupRenderer.cues[0].transcriptCueRenderer;
+                    const cueContainer = group.transcriptCueGroupRenderer?.cues;
+                    if (!cueContainer || cueContainer.length === 0) return null;
+                    
+                    const cue = cueContainer.slice(0, 1).shift()?.transcriptCueRenderer;
+                    if (!cue) return null;
+
                     return {
-                        text: cue.startMessage.runs.map((r: any) => r.text).join(''),
+                        text: cue.startMessage?.runs?.map((r: any) => r.text).join('') || '',
                         duration: parseInt(cue.durationMs || '0', 10),
                         offset: parseInt(cue.startOffsetMs || '0', 10)
                     };
-                });
+                }).filter(Boolean);
+
+                if (formattedOutput.length === 0) {
+                    throw new Error('No transcript data could be derived from response.');
+                }
 
                 // Condense text chunks into 60-second timestamped paragraph intervals
-                const transcriptText = formattedOutput.reduce((acc: string, item: { offset: number; text: string; }) => {
+                const transcriptText = formattedOutput.reduce((acc: string, item: any) => {
                     const seconds = Math.floor(item.offset / 1000);
                     const bucket = Math.floor(seconds / intervalSeconds) * intervalSeconds;
 
@@ -106,7 +129,7 @@ export const youtubeRouter = router({
                     return `${acc} ${item.text}`;
                 }, "").trim();
 
-                // Pass the cleaned transcript block data to your AI processing layer
+                // Pass the clean text block to the AI pipeline
                 const aiOutput = await aiResponse(transcriptText, language);
                 
                 return {
@@ -117,7 +140,6 @@ export const youtubeRouter = router({
             } catch (error: any) {
                 console.error("getTranscript failed:", error);
                 
-                // Bubble a clean client message if transcripts are missing natively
                 if (error.message?.includes('disabled or unavailable')) {
                     throw new TRPCError({
                         code: 'BAD_REQUEST',
