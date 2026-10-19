@@ -11,6 +11,7 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     environment: production
+
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
@@ -22,7 +23,6 @@ jobs:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
 
-      # FIX: Changed to the official ECR login action so steps.login-ecr.outputs.registry works
       - name: Login to Amazon ECR
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v2
@@ -33,15 +33,20 @@ jobs:
           ECR_REPOSITORY: cognitive-recall-api
           IMAGE_TAG: ${{ github.sha }}
         run: |
-          # FIX: Removed trailing backslash so these run as separate sequential commands
-          docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
-          docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
+          SHORT_TAG="${IMAGE_TAG::7}"
+          echo "Using image tag: $SHORT_TAG"
+
+          docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$SHORT_TAG .
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY:$SHORT_TAG
 
       - name: Deploy to EC2
-        uses: appleboy/ssh-action@v1.2.0  # FIX: Removed the "s" from ssh-actions
+        uses: appleboy/ssh-action@v1.2.0
         with:
           host: ${{ secrets.EC2_HOST }}
           username: ec2-user
           key: ${{ secrets.EC2_SSH_KEY }}
           script: |
-            bash /home/ec2-user/deploy.sh
+            TAG_FULL="${{ github.sha }}"
+            TAG_SHORT=${TAG_FULL::7}
+            echo "Deploying image tag: $TAG_SHORT"
+            bash /home/ec2-user/deploy.sh "$TAG_SHORT"
