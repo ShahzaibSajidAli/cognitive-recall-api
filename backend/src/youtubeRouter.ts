@@ -8,17 +8,20 @@ function cleanVideoId(url: string): string | null {
   const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
   const match = url.match(regExp);
   
-  if (match && match[2] && match[2].length === 11) {
-    return match[2];
+  // FIX 1: Safely access array index with explicit type assignment to clear undefined check
+  if (match && match[2] && (match[2] as string).length === 11) {
+    return match[2] as string;
   }
   
-  // Fallback parser for messy browser string captures
+  // Fallback parser for short URLs or messy captures
   try {
     const parsedUrl = new URL(url);
     if (parsedUrl.hostname.includes('youtu.be')) {
-      return parsedUrl.pathname.slice(1).split('&')[0] ?? null;
+      const pathPart = parsedUrl.pathname.slice(1).split('&')[0];
+      return pathPart ? (pathPart as string) : null;
     }
-    return parsedUrl.searchParams.get('v') ?? null;
+    const queryPart = parsedUrl.searchParams.get('v');
+    return queryPart ? (queryPart as string) : null;
   } catch {
     return null;
   }
