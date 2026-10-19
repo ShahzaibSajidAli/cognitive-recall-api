@@ -30,7 +30,7 @@ export const youtubeRouter = router({
                     offset: item.offset
                 }));
                 
-                const transcriptText = transcriptData.reduce((acc: any, item: { offset: number; text: any; }) => {
+                const transcriptText = formatedTranscript.reduce((acc: any, item: { offset: number; text: any; }) => {
                     const seconds = Math.floor(item.offset / 1000);
                     const bucket = Math.floor(seconds / intervalSeconds) * intervalSeconds;
 
