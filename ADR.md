@@ -529,3 +529,22 @@ Use `node:22-alpine` in both the builder and runtime stages of the `Dockerfile`.
 - **Status:** Accepted
 - **Date:** 2026-10-20
 - **Related:** ADR-0008, ADR-0009, ADR-0011
+
+### Context
+The prompt could only return empty question lists for videos unrelated to programming (ADR-0009), and the popup had no explicit signal to tell the user the video was unsuitable. An error code `NOT_EDUCATIONAL` already exists in `shared/errors.ts` (ADR-0011).
+
+### Decision
+Add a required `educational: boolean` field to the schema-validated output (ADR-0008). When it is `false`, the popup shows "Choose educational/coding video". Otherwise it renders both the general questions and the coding questions.
+
+### Alternatives considered
+- **Return the `NOT_EDUCATIONAL` error from the backend:** the code exists but was not used; the commit messages do not record why.
+
+### Consequences
+- Positive: One model call returns both the classification and the questions.
+- Positive: The popup can show a clear message instead of an empty result.
+- Positive: General questions are now rendered, not only coding exercises.
+- Negative: The classification is the model's judgement and is not covered by tests.
+- Negative: The popup writes model output, including the new general-question cards, with `innerHTML`, so the sanitization gap remains.
+
+---
+```
