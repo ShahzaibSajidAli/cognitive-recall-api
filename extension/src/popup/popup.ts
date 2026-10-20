@@ -41,10 +41,13 @@ else {
                 output.textContent = `Error: ${errorMsg}`; // <-- FIXED: Updates UI on error
             }
             // 4. Handle Successful responses
+            if (response.output.educational === false){
+                output.innerHTML = ""
+            }
             else {
-                const questions = response.output.questions.coding;
+                const content = response.output
                 output.innerHTML = "";
-                for(const question of questions) {
+                for(const question of content.questions.coding) {
                     const questionCard = document.createElement("div");
                     questionCard.className = "question-card"
                     questionCard.innerHTML = `<h3 class=question-text>Task: ${question.task} & Code: ${question.code}</h3>`;

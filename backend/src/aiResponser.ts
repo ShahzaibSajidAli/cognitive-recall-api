@@ -92,6 +92,7 @@ const TranscriptQuestions = z.object({
             filename: z.string().describe("Label for the code block, e.g. 'app.ts'"),
         })).describe("Coding practice exercises related to the video"),
     }),
+    educational: z.boolean().describe("Tells if the video is realted to coding and educational or not")
 });
 
 export const aiResponse = async (transcript: string, language: string) => {
