@@ -5,7 +5,11 @@ import { aiResponse } from './aiResponser.js';
 import { TRPCError } from '@trpc/server';
 import {fetch as undiciFetch, ProxyAgent} from 'undici';
 
-const dispatcher = new ProxyAgent(process.env.SCRAPERAPI_PROXY || "");
+const dispatcher = new ProxyAgent({
+    uri: process.env.SCRAPERAPI_PROXY!,
+    proxyTls: { rejectUnauthorized: false },
+    requestTls: { rejectUnauthorized: false }
+});
 
 const proxiedFetch = ((url: any, init?: any) =>
   undiciFetch(url, { ...init, dispatcher })) as unknown as typeof globalThis.fetch;
