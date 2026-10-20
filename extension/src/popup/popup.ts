@@ -41,12 +41,19 @@ else {
                 output.textContent = `Error: ${errorMsg}`; // <-- FIXED: Updates UI on error
             }
             // 4. Handle Successful responses
-            if (response.output.educational === false){
-                output.innerHTML = "Choose a coding/technical video";
+            else if (response.output.educational === false) {
+                output.innerHTML = "Choose educational/coding video"
             }
             else {
                 const content = response.output
                 output.innerHTML = "";
+                for(const question of content.questions.general) {
+                    const questionCard = document.createElement("div")
+                    questionCard.className = "question-card"
+                    questionCard.innerHTML = `<h3 class=question-text>TimeStamp: ${question.timestampSeconds} ${question.question}</h3>`;
+                    output.appendChild(questionCard)  
+                }
+                
                 for(const question of content.questions.coding) {
                     const questionCard = document.createElement("div");
                     questionCard.className = "question-card"
