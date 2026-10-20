@@ -6,6 +6,7 @@ on:
     paths-ignore:
       - 'extension/**'
       - '.github/workflows/**'
+      - '*.md'
 
 jobs:
   deploy:
