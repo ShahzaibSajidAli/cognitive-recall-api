@@ -23,6 +23,15 @@ This document records the significant architectural decisions made in **Cognitiv
 | [0013](#adr-0013-environment-configuration-with-dotenv-and-fail-fast-startup) | Environment configuration with dotenv and fail-fast startup | Accepted | 2026-10-04 |
 | [0014](#adr-0014-typescript-everywhere-with-strict-compiler-settings) | TypeScript everywhere with strict compiler settings | Accepted | 2026-09-26 |
 | [0015](#adr-0015-vite-multi-entry-build-for-the-extension) | Vite multi-entry build for the extension | Accepted | 2026-09-29 |
+| [0016](#adr-0016-deploy-to-ec2-with-github-actions-and-amazon-ecr) | Deploy to EC2 with GitHub Actions and Amazon ECR | Accepted | 2026-10-16 |
+| [0017](#adr-0017-containerize-the-backend-with-a-multi-stage-docker-build) | Containerize the backend with a multi-stage Docker build | Accepted | 2026-10-17 |
+| [0018](#adr-0018-tag-docker-images-with-the-short-commit-sha) | Tag Docker images with the short commit SHA | Accepted | 2026-10-17 |
+| [0019](#adr-0019-configure-cors-from-the-environment-and-point-the-extension-at-the-ec2-server) | Configure CORS from the environment and point the extension at the EC2 server | Accepted | 2026-10-19 |
+| [0020](#adr-0020-route-youtube-transcript-requests-through-scraperapi) | Route YouTube transcript requests through ScraperAPI | Accepted | 2026-10-19 |
+| [0021](#adr-0021-attach-the-proxy-per-request-with-an-undici-dispatcher) | Attach the proxy per request with an undici dispatcher | Accepted | 2026-10-20 |
+| [0022](#adr-0022-skip-tls-certificate-verification-for-proxied-youtube-requests) | Skip TLS certificate verification for proxied YouTube requests | Accepted | 2026-10-20 |
+| [0023](#adr-0023-run-the-backend-on-nodejs-22) | Run the backend on Node.js 22 | Accepted | 2026-10-20 |
+| [0024](#adr-0024-add-an-educational-flag-to-the-structured-llm-output) | Add an `educational` flag to the structured LLM output | Accepted | 2026-10-20 |
 
 ---
 
@@ -321,3 +330,202 @@ Use **Vite** with three Rollup inputs (`background`, `popup`, `content`) and fix
 - Negative: the extension currently has no automated tests, and the content script has no logic yet.
 
 ---
+
+## ADR-0016: Deploy to EC2 with GitHub Actions and Amazon ECR
+
+- **Status:** Accepted
+- **Date:** 2026-10-16
+- **Related:** ADR-0003
+
+### Context
+The backend needed to be deployed to an AWS EC2 instance from the repository. The repository also contains the browser extension (ADR-0003), which does not run on the server.
+
+### Decision
+A GitHub Actions workflow (`.github/workflows/aws.yml`) runs on every push to `master` in the `production` environment. It authenticates to AWS (region `ap-southeast-2`) with repository secrets, builds the Docker image, pushes it to an Amazon ECR repository named `cognitive-recall-api`, then connects to the EC2 host over SSH and runs `deploy.sh` with the image tag. Changes under `extension/**` and `.github/workflows/**` do not trigger it.
+
+### Alternatives considered
+- None recorded.
+
+### Consequences
+- Positive: Backend changes reach the server without manual steps.
+- Positive: Extension-only changes do not redeploy the server.
+- Positive: AWS and SSH credentials stay in GitHub secrets.
+- Negative: The rollout logic lives in `deploy.sh` on the EC2 host, outside the repository, so how the running container is replaced is not versioned or reviewed here.
+- Negative: The workflow has no test step and deploys to production on every push to `master`.
+- Negative: Access to the server relies on a long-lived SSH key stored as a secret.
+
+---
+
+## ADR-0017: Containerize the backend with a multi-stage Docker build
+
+- **Status:** Accepted
+- **Date:** 2026-10-17
+- **Related:** ADR-0003, ADR-0016
+
+### Context
+The backend must behave the same on the EC2 server as in development. Running it directly on the host risks dependency mismatches between machines. The repository also contains the extension, which the server does not need (ADR-0003).
+
+### Decision
+Build the backend as a Docker image with a two-stage `Dockerfile`. The builder stage installs dependencies with `npm ci` and compiles TypeScript; the runtime stage prunes dev dependencies and runs `dist/backend/src/server.js` as a non-root user on port 3000. Package manifests are copied before the sources so the install layer is cached. `.dockerignore` excludes `extension/`, `.env` files, keys, `.git/`, `node_modules` and markdown files.
+
+### Alternatives considered
+- **Run Node directly on the EC2 host:** rejected because it reintroduces dependency and environment mismatches between development and the server.
+
+### Consequences
+- Positive: The same image runs in every environment.
+- Positive: The container runs as a non-root user, and secrets and the extension stay out of the build context.
+- Positive: Rebuilds are faster when only source files change, because the dependency layer is cached.
+- Negative: The runtime stage copies the whole workspace from the builder, not only the compiled output, so the image is larger than necessary.
+- Negative: `npm prune --production` requires runtime packages to be listed under `dependencies`, so `fastify`, `@fastify/cors` and `@trpc/server` were moved there in `backend/package.json`, and the unused OpenRouter and OpenAI-compatible packages were removed.
+- Negative: `extension/package.json` gained backend packages (`fastify`, `@fastify/cors`, `@trpc/server`, `https-proxy-agent`) in the same period; they need review.
+
+---
+
+## ADR-0018: Tag Docker images with the short commit SHA
+
+- **Status:** Accepted
+- **Date:** 2026-10-17
+- **Related:** ADR-0016
+
+### Context
+The first workflow versions pushed every image with the tag `latest`. A moving tag does not identify which commit a running container was built from.
+
+### Decision
+Tag each image with the first 7 characters of `github.sha` and pass the same tag to `deploy.sh`.
+
+### Alternatives considered
+- **`latest`:** used first; it does not identify the commit and cannot pin a specific build.
+
+### Consequences
+- Positive: Every running image can be traced to a commit.
+- Positive: Any earlier commit can be redeployed by its tag.
+- Negative: A 7-character SHA says nothing about the release; the `version` in `package.json` (now 1.1.2) is no longer tied to the image tag.
+- Negative: No image cleanup is defined in this repository, so ECR keeps one image per deploy.
+
+---
+
+## ADR-0019: Configure CORS from the environment and point the extension at the EC2 server
+
+- **Status:** Accepted
+- **Date:** 2026-10-19
+- **Related:** ADR-0012, ADR-0013, ADR-0016
+
+### Context
+The extension called `http://localhost:3000/trpc`, and the server allowed every origin, which the code comment marked as development only. Once the backend ran on EC2, the extension had to reach it.
+
+### Decision
+The server reads its CORS origin from `ALLOWED_ORIGIN` and falls back to `*` when it is unset. The extension service worker (ADR-0012) now calls `http://13.211.33.24/trpc`, the EC2 public address.
+
+### Alternatives considered
+- None recorded.
+
+### Consequences
+- Positive: The deployed backend is reachable from the extension.
+- Positive: The allowed origin can be restricted without a code change.
+- Negative: The address is hardcoded in the extension source, so it must be edited if the instance address changes, and local development now needs a code change to target `localhost`.
+- Negative: Traffic between the extension and the API uses plain HTTP.
+- Negative: `ALLOWED_ORIGIN` defaults to `*`, so an unset variable leaves CORS open.
+- Negative: `manifest.json` `host_permissions` still lists only `http://localhost:3000/*`.
+
+---
+
+## ADR-0020: Route YouTube transcript requests through ScraperAPI
+
+- **Status:** Accepted
+- **Date:** 2026-10-19
+- **Related:** ADR-0005
+
+### Context
+`youtube-transcript` (ADR-0005) worked in local development but its requests failed once the backend ran on an AWS EC2 instance. The cause is assumed to be YouTube restricting requests from datacenter addresses; it has not been confirmed from server logs. Switching to `youtube-captions-scraper` and to a hand-written InnerTube client was also tried between 2026-10-19 and 2026-10-20 and later replaced by `youtube-transcript` again.
+
+### Decision
+Send transcript requests through the ScraperAPI proxy, configured with the `SCRAPERAPI_PROXY` environment variable, and keep `youtube-transcript` as the transcript library.
+
+### Alternatives considered
+- **Direct requests from EC2:** failed in production, which is why a proxy was added.
+- **`youtube-captions-scraper` and a hand-written InnerTube client:** both tried and replaced by `youtube-transcript`; the commit messages do not record why.
+
+### Consequences
+- Positive: Requests are meant to leave from the proxy's address instead of the EC2 address.
+- Negative: A paid third-party service sits in the request path and sees the YouTube requests; transcripts fail if its credits run out or it is down.
+- Negative: `SCRAPERAPI_PROXY` is a new secret to manage in the deployment.
+- Negative: `youtube-transcript` is still an unofficial library (ADR-0005).
+- Negative: End-to-end behavior in production is not yet confirmed in this record.
+
+---
+
+## ADR-0021: Attach the proxy per request with an undici dispatcher
+
+- **Status:** Accepted
+- **Date:** 2026-10-20
+- **Related:** ADR-0020
+
+### Context
+The first proxy attempts passed an `https-proxy-agent` `agent` to Node's built-in `fetch`. Built-in `fetch` ignores `agent`, so requests went out directly and the proxy was never used. The server also makes other outbound calls, such as the Gemini requests (ADR-0007), which should not go through the proxy.
+
+### Decision
+Use `undici`'s `fetch` with a `ProxyAgent` passed as `dispatcher`, wrapped in a custom `fetch` function handed to `YoutubeTranscript.fetchTranscript`. The `ProxyAgent` is created once at module load. `https-proxy-agent` and `youtube-captions-scraper` are removed from the backend.
+
+### Alternatives considered
+- **`https-proxy-agent` with built-in `fetch`:** the `agent` option is ignored, so the proxy is silently bypassed.
+- **A global dispatcher (`setGlobalDispatcher`):** would proxy every outbound call, including Gemini requests that carry the API key, and spend proxy credits on them.
+- **Built-in `fetch` with the npm `ProxyAgent`:** fails with `invalid onRequestStart method` when the bundled and installed undici versions differ.
+
+### Consequences
+- Positive: Only YouTube traffic goes through the proxy.
+- Negative: The wrapper needs a type cast (`as unknown as typeof globalThis.fetch`) because undici's `Request` and `Response` types differ from the standard ones.
+- Negative: `undici` is now a direct dependency with its own minimum Node version (ADR-0023).
+- Negative: A custom `fetch` wrapper is extra code to maintain.
+
+---
+
+## ADR-0022: Skip TLS certificate verification for proxied YouTube requests
+
+- **Status:** Accepted
+- **Date:** 2026-10-20
+- **Related:** ADR-0021
+
+### Context
+Requests through the ScraperAPI proxy failed on EC2 with `UNABLE_TO_VERIFY_LEAF_SIGNATURE` ("unable to verify the first certificate").
+
+### Decision
+Set `rejectUnauthorized: false` in both `proxyTls` and `requestTls` of the `ProxyAgent` used for transcript requests. No other HTTP client in the backend is affected.
+
+### Alternatives considered
+- **Keep verification on:** requests failed with `UNABLE_TO_VERIFY_LEAF_SIGNATURE`.
+
+### Consequences
+- Positive: Lets proxied requests complete the TLS handshake; the setting is limited to the one dispatcher (ADR-0021). Not yet confirmed in production logs.
+- Negative: The server identity is not verified for these requests, including the connection to the proxy itself, so a party on the network path could alter responses. The data is public captions, but the risk is accepted knowingly.
+- Negative: Follow-up: check whether ScraperAPI provides a CA certificate that can be trusted instead.
+
+---
+
+## ADR-0023: Run the backend on Node.js 22
+
+- **Status:** Accepted
+- **Date:** 2026-10-20
+- **Related:** ADR-0017, ADR-0021
+
+### Context
+The `undici` 8.x package installed as a dependency requires Node.js 22.19 or newer. The image used `node:20-alpine`, and the container crashed at startup with `TypeError: Cannot read properties of undefined (reading 'bind')` inside undici's decompress interceptor. Node.js 20 also reached end of life in April 2026.
+
+### Decision
+Use `node:22-alpine` in both the builder and runtime stages of the `Dockerfile`.
+
+### Alternatives considered
+- **Pin `undici` to 7.x and stay on Node.js 20:** would work, but keeps an end-of-life runtime.
+
+### Consequences
+- Positive: Supports `undici` 8.x.
+- Positive: Moves the runtime onto a supported Node.js release.
+- Negative: The tag `22-alpine` floats within Node.js 22, so a rebuild can pick up a newer minor release.
+- Negative: Development machines and the container can run different Node.js versions, because the repository pins no version.
+
+---
+
+## ADR-0024: Add an `educational` flag to the structured LLM output
+
+- **Status:** Accepted
+- **Date:** 2026-10-20
+- **Related:** ADR-0008, ADR-0009, ADR-0011
