@@ -1,7 +1,7 @@
 # ==========================================
 # STAGE 1: Build & Compile TypeScript
 # ==========================================
-FROM node:20-alpine AS builder
+FROM node:22-alpine AS builder
 WORKDIR /app
 
 # 1. Copy package configurations first to leverage build caching
@@ -24,7 +24,7 @@ RUN npm prune --production --prefix backend
 # ==========================================
 # STAGE 2: Lightweight Production Runtime
 # ==========================================
-FROM node:20-alpine AS runner
+FROM node:22-alpine AS runner
 WORKDIR /app
 
 # Set the production environment flag
@@ -36,7 +36,7 @@ RUN addgroup -g 1001 -S nodeapp && adduser -S nodeapp -u 1001 -G nodeapp
 # Copy the entire workspace from Stage 1 (already missing the extension folder)
 COPY --from=builder --chown=nodeapp:nodeapp /app /app
 
-# Inform Docker that the container listens on port 8000
+# Inform Docker that the container listens on port 3000 at runtime
 EXPOSE 3000
 
 # Change working location into the backend directory so the relative paths match your script
