@@ -42,7 +42,7 @@ else {
             }
             // 4. Handle Successful responses
             if (response.output.educational === false){
-                output.innerHTML = ""
+                output.innerHTML = "Choose a coding/technical video";
             }
             else {
                 const content = response.output
