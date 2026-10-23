@@ -123,8 +123,8 @@ const mockTranscriptQuestionsData = {
 };
 
 export const aiResponse = async (transcript: string, language: string) => {
-    if(process.env.MOCK_AI === true) {
-        await new Promise((resolve) => setTimeout(resolve, 2000));
+    if(process.env.MOCK_AI === 'true') {
+        await new Promise<void>((resolve) => setTimeout(resolve, 2500));
         return mockTranscriptQuestionsData;
     }
     
