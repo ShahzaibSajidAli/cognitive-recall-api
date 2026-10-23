@@ -124,7 +124,7 @@ const mockTranscriptQuestionsData = {
 
 export const aiResponse = async (transcript: string, language: string) => {
     if(process.env.MOCK_AI === 'true') {
-        await new Promise<void>((resolve) => setTimeout(resolve, 2500));
+        await new Promise<void>((resolve) => {globalThis.setTimeout(() => resolve(), 2500)});
         return mockTranscriptQuestionsData;
     }
     
