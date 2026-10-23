@@ -40,14 +40,12 @@ jobs:
           docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$SHORT_TAG .
           docker push $ECR_REGISTRY/$ECR_REPOSITORY:$SHORT_TAG
 
-      - name: Deploy to EC2
-        uses: appleboy/ssh-action@v1.2.0
-        with:
-          host: ${{ secrets.EC2_HOST }}
-          username: ec2-user
-          key: ${{ secrets.EC2_SSH_KEY }}
-          script: |
+      - name: Access SSM Session & Deploy Container
+        run: |
             TAG_FULL="${{ github.sha }}"
             TAG_SHORT=${TAG_FULL::7}
-            echo "Deploying image tag: $TAG_SHORT"
-            bash /home/ec2-user/deploy.sh "$TAG_SHORT"
+            aws ssm send-command \
+            --instance-ids i-09639b87639a51f05 \
+            --region ap-southeast-2 \
+            --document-name "AWS-RunShellScript" \
+            --parameters commands=["runuser -l ec2-user -c 'bash /home/ec2-user/deploy.sh $TAG_SHORT'"]
