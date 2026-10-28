@@ -5,6 +5,7 @@ import path from 'path';
 import dotenv from 'dotenv';
 import z from 'zod';
 import { setTimeout } from 'timers/promises';
+import { typescriptTranscriptQuestions } from './mockfiles/mockAiResponse.js';
 
 
 // const __filename = fileURLToPath(import.meta.url)
@@ -29,6 +30,13 @@ if (!process.env.GEMINI_API_KEY) {
     process.exit(1);
 }
 
+const rand = (min: number, max: number) =>
+    min + Math.random() * (max - min);
+
+async function mockDelay(min: number, max: number) {
+    const ms = rand(min, max);
+    await new Promise<void>((resolve) => globalThis.setTimeout(() => resolve(), ms));
+}
 const geminiAI = createGoogleGenerativeAI({
     apiKey: process.env.GEMINI_API_KEY!
 });
@@ -96,6 +104,10 @@ const TranscriptQuestions = z.object({
 });
 
 export const aiResponse = async (transcript: string, language: string) => {
+    if (process.env.MOCK_AI === 'true') {
+        await mockDelay(5000, 15000);
+        return typescriptTranscriptQuestions;
+    }
     const maxAttempts = 3;
 
     for (let attempts = 1; attempts <= maxAttempts; attempts++) {
