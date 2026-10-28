@@ -103,6 +103,33 @@ const TranscriptQuestions = z.object({
     educational: z.boolean().describe("Tells if the video is realted to coding and educational or not")
 });
 
+// For Mock Testing Providing Mock JSON
+const mockTranscriptQuestionsData = {
+  title: "Building Scalable tRPC Microservices in Docker",
+  language: "en",
+  questions: {
+    general: [
+      {
+        question: "What is the primary benefit of request batching in tRPC?",
+        timestampSeconds: 145
+      },
+      {
+        question: "How do you prevent Linux file descriptor limits from crashing a container?",
+        timestampSeconds: 420
+      }
+    ],
+    coding: [
+      {
+        task: "Implement a basic Zod rate limiter middleware for your procedures.",
+        code: "import { initTRPC } from '@trpc/server';\nconst t = initTRPC.create();\nexport const rateLimited = t.procedure.use(async (opts) => {\n  // Add limitation logic here\n  return opts.next();\n});",
+        lang: "typescript",
+        filename: "middleware.ts"
+      }
+    ]
+  },
+  educational: true
+};
+
 export const aiResponse = async (transcript: string, language: string) => {
     if (process.env.MOCK_AI === 'true') {
         await mockDelay(5000, 15000);
