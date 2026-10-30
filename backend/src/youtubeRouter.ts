@@ -134,7 +134,7 @@ export const youtubeRouter = router({
                         success: true,
                         output: aiOutput
                     }
-                    
+
                 } else {
                     if (process.env.DEBUG_YOUTUBE_METADATA === 'true') {
                         await inspectInnerTubeMetadata(videoUrl);
@@ -142,6 +142,7 @@ export const youtubeRouter = router({
 
                     const transcriptData = await YoutubeTranscript.fetchTranscript(videoUrl, {
                         fetch: proxiedFetch,
+                        lang: language
                     });
                     const transcriptText = transcriptData.reduce((acc, item) => {
                         const seconds = Math.floor(item.offset / 1000);
