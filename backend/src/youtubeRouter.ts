@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { router, procedure } from './trpc.js';
-import { YoutubeTranscript } from 'youtube-transcript'
+import { YoutubeTranscript, YoutubeTranscriptDisabledError } from 'youtube-transcript'
 import { aiResponse } from './aiResponser.js';
 import { TRPCError } from '@trpc/server';
 import { fetch as undiciFetch, ProxyAgent } from 'undici';
@@ -90,8 +90,7 @@ export const youtubeRouter = router({
             }
             catch (error) {
                 console.error("getTranscript failed:", error);
-                const errorName = error instanceof Error ? error.name : '';
-                const message = errorName === 'YoutubeTranscriptDisabledError'
+                const message = error instanceof YoutubeTranscriptDisabledError
                     ? 'YouTube reports that transcripts are disabled or unavailable for this video.'
                     : 'Failed to fetch transcript or generate questions. Please check the proxy configuration and try again.';
                 throw new TRPCError({
