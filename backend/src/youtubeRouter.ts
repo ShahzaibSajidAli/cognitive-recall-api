@@ -60,10 +60,10 @@ export const youtubeRouter = router({
 
                         return `${acc} ${item.text}`
                     }, "").trim();
-                    const aiOutput = await aiResponse(transcriptText, language);
+                    // const aiOutput = await aiResponse(transcriptText, language);
                     return {
                         success: true,
-                        output: aiOutput
+                        output: transcriptText
                     }
                 }
 
