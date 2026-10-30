@@ -134,6 +134,7 @@ export const youtubeRouter = router({
                         success: true,
                         output: aiOutput
                     }
+                    
                 } else {
                     if (process.env.DEBUG_YOUTUBE_METADATA === 'true') {
                         await inspectInnerTubeMetadata(videoUrl);
