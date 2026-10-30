@@ -46,20 +46,8 @@ else {
             }
             else {
                 const content = response.output
-                output.innerHTML = "";
-                for(const question of content.questions.general) {
-                    const questionCard = document.createElement("div")
-                    questionCard.className = "question-card"
-                    questionCard.innerHTML = `<h3 class=question-text>TimeStamp: ${question.timestampSeconds} ${question.question}</h3>`;
-                    output.appendChild(questionCard)  
-                }
-                
-                for(const question of content.questions.coding) {
-                    const questionCard = document.createElement("div");
-                    questionCard.className = "question-card"
-                    questionCard.innerHTML = `<h3 class=question-text>Task: ${question.task} & Code: ${question.code}</h3>`;
-                    output.appendChild(questionCard); 
-                }
+            //
+            output.innerText = content;     
             }
         }
         catch (error: any) {

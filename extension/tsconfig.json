@@ -10,7 +10,7 @@
     // See also https://aka.ms/tsconfig/module
     "module": "es2022",
     "target": "es2022",
-    "types": ["@types/chrome", "chrome"],
+    "types": ["@types/chrome", "chrome", "vite/client"],
     "moduleResolution": "bundler",
     // For nodejs:
     "lib": ["es2022", "DOM", "DOM.Iterable"],

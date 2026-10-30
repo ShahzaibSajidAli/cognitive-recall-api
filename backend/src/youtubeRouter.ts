@@ -5,7 +5,6 @@ import { aiResponse } from './aiResponser.js';
 import { TRPCError } from '@trpc/server';
 import { fetch as undiciFetch, ProxyAgent } from 'undici';
 import { typescriptTranscript } from './mockfiles/mockTranscript.js'
-import {http, HttpResponse } from 'msw/http'
 
 // For Mock Testing
 const rand = (min: number, max: number) =>
@@ -16,8 +15,17 @@ async function mockDelay(min: number, max: number) {
     await new Promise<void>((resolve) => globalThis.setTimeout(() => resolve(), ms))
 }
 
+const proxyValue = process.env.SCRAPERAPI_PROXY?.trim();
+if (!proxyValue) {
+    throw new Error('SCRAPERAPI_PROXY is required to fetch YouTube transcripts.');
+}
+
+const proxyUri = /^[a-z][a-z\d+\-.]*:\/\//i.test(proxyValue)
+    ? proxyValue
+    : `http://${proxyValue}`;
+
 const dispatcher = new ProxyAgent({
-    uri: process.env.SCRAPERAPI_PROXY!,
+    uri: proxyUri,
     proxyTls: { rejectUnauthorized: false },
     requestTls: { rejectUnauthorized: false }
 });
@@ -82,9 +90,14 @@ export const youtubeRouter = router({
             }
             catch (error) {
                 console.error("getTranscript failed:", error);
+                const errorName = error instanceof Error ? error.name : '';
+                const message = errorName === 'YoutubeTranscriptDisabledError'
+                    ? 'YouTube reports that transcripts are disabled or unavailable for this video.'
+                    : 'Failed to fetch transcript or generate questions. Please check the proxy configuration and try again.';
                 throw new TRPCError({
                     code: 'INTERNAL_SERVER_ERROR',
-                    message: 'Failed to fetch transcript or generate questions. Please check the URL and try again.',
+                    message,
+                    cause: error
                 });
             }
         })
