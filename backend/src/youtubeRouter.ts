@@ -5,6 +5,7 @@ import { aiResponse } from './aiResponser.js';
 import { TRPCError } from '@trpc/server';
 import { fetch as undiciFetch, ProxyAgent } from 'undici';
 import { typescriptTranscript } from './mockfiles/mockTranscript.js'
+import {http, HttpResponse } from 'msw/http'
 
 // For Mock Testing
 const rand = (min: number, max: number) =>
@@ -71,10 +72,10 @@ export const youtubeRouter = router({
 
                         return `${acc} ${item.text}`
                     }, "").trim();
-                    const aiOutput = await aiResponse(transcriptText, language);
+                    // const aiOutput = await aiResponse(transcriptText, language);
                     return {
                         success: true,
-                        output: aiOutput
+                        output: ''
                     }
                 }
 
