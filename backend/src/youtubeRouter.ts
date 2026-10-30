@@ -33,75 +33,6 @@ const dispatcher = new ProxyAgent({
 const proxiedFetch = ((url: any, init?: any) =>
     undiciFetch(url, { ...init, dispatcher })) as unknown as typeof globalThis.fetch;
 
-const YOUTUBE_INNERTUBE_URL = 'https://www.youtube.com/youtubei/v1/player?prettyPrint=false';
-const YOUTUBE_INNERTUBE_CLIENT_VERSION = '20.10.38';
-
-function extractYoutubeVideoId(videoUrl: string): string | undefined {
-    const match = videoUrl.match(
-        /(?:youtube\.com\/(?:[^/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^"&?/\s]{11})/i
-    );
-    return match?.[1];
-}
-
-async function inspectInnerTubeMetadata(videoUrl: string): Promise<void> {
-    const videoId = extractYoutubeVideoId(videoUrl);
-    if (!videoId) {
-        console.warn('[youtube-debug] Could not extract a YouTube video ID.');
-        return;
-    }
-
-    try {
-        const response = await proxiedFetch(YOUTUBE_INNERTUBE_URL, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'User-Agent': `com.google.android.youtube/${YOUTUBE_INNERTUBE_CLIENT_VERSION} (Linux; U; Android 14)`
-            },
-            body: JSON.stringify({
-                context: {
-                    client: {
-                        clientName: 'ANDROID',
-                        clientVersion: YOUTUBE_INNERTUBE_CLIENT_VERSION
-                    }
-                },
-                videoId
-            })
-        });
-
-        const body: unknown = await response.json();
-        const playerResponse = body && typeof body === 'object'
-            ? body as {
-                playabilityStatus?: { status?: string };
-                captions?: {
-                    playerCaptionsTracklistRenderer?: {
-                        captionTracks?: Array<{
-                            languageCode?: string;
-                            name?: { simpleText?: string };
-                            kind?: string;
-                        }>;
-                    };
-                };
-            }
-            : {};
-        const tracks = playerResponse.captions?.playerCaptionsTracklistRenderer?.captionTracks ?? [];
-
-        console.info('[youtube-debug] InnerTube metadata:', {
-            videoId,
-            status: response.status,
-            ok: response.ok,
-            playabilityStatus: playerResponse.playabilityStatus?.status ?? 'missing',
-            hasCaptionTracks: tracks.length > 0,
-            captionTracks: tracks.map((track) => ({
-                languageCode: track.languageCode ?? 'unknown',
-                name: track.name?.simpleText ?? 'unknown',
-                kind: track.kind ?? 'manual'
-            }))
-        });
-    } catch (error) {
-        console.error('[youtube-debug] InnerTube metadata request failed:', error);
-    }
-}
-
 export const youtubeRouter = router({
     getTranscript: procedure
         .input(
@@ -136,10 +67,6 @@ export const youtubeRouter = router({
                     }
 
                 } else {
-                    if (process.env.DEBUG_YOUTUBE_METADATA === 'true') {
-                        await inspectInnerTubeMetadata(videoUrl);
-                    }
-
                     const transcriptData = await YoutubeTranscript.fetchTranscript(videoUrl, {
                         fetch: proxiedFetch,
                         lang: language
