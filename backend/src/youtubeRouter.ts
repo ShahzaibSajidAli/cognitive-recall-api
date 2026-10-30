@@ -1,10 +1,9 @@
 import { z } from 'zod';
 import { router, procedure } from './trpc.js';
-import { YoutubeTranscript, YoutubeTranscriptDisabledError } from 'youtube-transcript'
 import { aiResponse } from './aiResponser.js';
 import { TRPCError } from '@trpc/server';
-import { fetch as undiciFetch, ProxyAgent } from 'undici';
 import { typescriptTranscript } from './mockfiles/mockTranscript.js'
+import { fetchTranscriptWithFallback } from './youtubeTranscript.js';
 
 // For Mock Testing
 const rand = (min: number, max: number) =>
@@ -14,24 +13,6 @@ async function mockDelay(min: number, max: number) {
     const ms = rand(min, max);
     await new Promise<void>((resolve) => globalThis.setTimeout(() => resolve(), ms))
 }
-
-const proxyValue = process.env.SCRAPERAPI_PROXY?.trim();
-if (!proxyValue) {
-    throw new Error('SCRAPERAPI_PROXY is required to fetch YouTube transcripts.');
-}
-
-const proxyUri = /^[a-z][a-z\d+\-.]*:\/\//i.test(proxyValue)
-    ? proxyValue
-    : `http://${proxyValue}`;
-
-const dispatcher = new ProxyAgent({
-    uri: proxyUri,
-    proxyTls: { rejectUnauthorized: false },
-    requestTls: { rejectUnauthorized: false }
-});
-
-const proxiedFetch = ((url: any, init?: any) =>
-    undiciFetch(url, { ...init, dispatcher })) as unknown as typeof globalThis.fetch;
 
 export const youtubeRouter = router({
     getTranscript: procedure
@@ -67,10 +48,7 @@ export const youtubeRouter = router({
                     }
 
                 } else {
-                    const transcriptData = await YoutubeTranscript.fetchTranscript(videoUrl, {
-                        fetch: proxiedFetch,
-                        lang: language
-                    });
+                    const transcriptData = await fetchTranscriptWithFallback(videoUrl);
                     const transcriptText = transcriptData.reduce((acc, item) => {
                         const seconds = Math.floor(item.offset / 1000);
                         const bucket = Math.floor(seconds / intervalSeconds) * intervalSeconds;
@@ -82,19 +60,19 @@ export const youtubeRouter = router({
 
                         return `${acc} ${item.text}`
                     }, "").trim();
-                    // const aiOutput = await aiResponse(transcriptText, language);
+                    const aiOutput = await aiResponse(transcriptText, language);
                     return {
                         success: true,
-                        output: transcriptText
+                        output: aiOutput
                     }
                 }
 
             }
             catch (error) {
                 console.error("getTranscript failed:", error);
-                const message = error instanceof YoutubeTranscriptDisabledError
-                    ? 'YouTube reports that transcripts are disabled or unavailable for this video.'
-                    : 'Failed to fetch transcript or generate questions. Please check the proxy configuration and try again.';
+                const message = error instanceof Error
+                    ? error.message
+                    : 'Failed to fetch transcript or generate questions.';
                 throw new TRPCError({
                     code: 'INTERNAL_SERVER_ERROR',
                     message,
