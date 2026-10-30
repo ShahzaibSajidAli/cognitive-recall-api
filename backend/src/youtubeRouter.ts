@@ -75,7 +75,7 @@ export const youtubeRouter = router({
                     // const aiOutput = await aiResponse(transcriptText, language);
                     return {
                         success: true,
-                        output: ''
+                        output: transcriptText
                     }
                 }
 
