@@ -132,7 +132,8 @@ export const youtubeRouter = router({
                     const aiOutput = await aiResponse(transcriptText, language);
                     return {
                         success: true,
-                        output: aiOutput
+                        output: aiOutput,
+                        message: language
                     }
 
                 } else {
@@ -165,15 +166,12 @@ export const youtubeRouter = router({
                         return `${acc} ${item.text}`
                     }, "").trim();
                     // const aiOutput = await aiResponse(transcriptText, language);
-                    if (innerTubeRequest?.languageCode !== undefined && innerTubeRequest.languageCode !== 'unknown') {
-                        return {
-                            success: true,
-                            output: transcriptText,
-                            message: innerTubeRequest!.languageCode
-                        }
+                    return {
+                        success: true,
+                        output: transcriptText,
+                        message: innerTubeRequest!.languageCode
                     }
                 }
-
             }
             catch (error) {
                 console.error("getTranscript failed:", error);

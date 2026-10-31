@@ -50,9 +50,10 @@ async function handleFetch(sendResponse: (response: any) => void, lang: string) 
             videoUrl: currentUrl,
             language: lang
         });
-
+        
         console.log('Success! Backend sent back the transcript:', response.output);
-        sendResponse({ success: true, output: response.output });
+        sendResponse({ success: true, output: response.output, message: response.message
+        });
     }
     catch (error: any) {
         console.error('Fatal failure inside asynchronous execution path:', error);
