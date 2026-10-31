@@ -146,6 +146,7 @@ export const youtubeRouter = router({
                             fetch: proxiedFetch,
                             lang: innerTubeRequest.languageCode
                         });
+                        console.log(innerTubeRequest.languageCode)
                     } else {
                         transcriptData = await YoutubeTranscript.fetchTranscript(videoUrl, {
                             fetch: proxiedFetch,
