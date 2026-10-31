@@ -165,10 +165,12 @@ export const youtubeRouter = router({
                         return `${acc} ${item.text}`
                     }, "").trim();
                     // const aiOutput = await aiResponse(transcriptText, language);
-                    return {
-                        success: true,
-                        output: transcriptText,
-                        message: innerTubeRequest!.languageCode 
+                    if (innerTubeRequest?.languageCode !== undefined && innerTubeRequest.languageCode !== 'unknown') {
+                        return {
+                            success: true,
+                            output: transcriptText,
+                            message: innerTubeRequest!.languageCode
+                        }
                     }
                 }
 
