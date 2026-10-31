@@ -69,6 +69,7 @@ async function inspectInnerTubeMetadata(videoUrl: string) {
         });
 
         const body: unknown = await response.json();
+        console.log(body);
         const playerResponse = body && typeof body === 'object'
             ? body as {
                 playabilityStatus?: { status?: string };
