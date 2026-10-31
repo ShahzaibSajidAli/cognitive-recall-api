@@ -43,7 +43,7 @@ function extractYoutubeVideoId(videoUrl: string): string | undefined {
     return match?.[1];
 }
 
-async function inspectInnerTubeMetadata(videoUrl: string): Promise<void> {
+async function inspectInnerTubeMetadata(videoUrl: string) {
     const videoId = extractYoutubeVideoId(videoUrl);
     if (!videoId) {
         console.warn('[youtube-debug] Could not extract a YouTube video ID.');
@@ -83,20 +83,20 @@ async function inspectInnerTubeMetadata(videoUrl: string): Promise<void> {
                 };
             }
             : {};
+
         const tracks = playerResponse.captions?.playerCaptionsTracklistRenderer?.captionTracks ?? [];
 
-        console.info('[youtube-debug] InnerTube metadata:', {
-            videoId,
-            status: response.status,
-            ok: response.ok,
-            playabilityStatus: playerResponse.playabilityStatus?.status ?? 'missing',
-            hasCaptionTracks: tracks.length > 0,
-            captionTracks: tracks.map((track) => ({
-                languageCode: track.languageCode ?? 'unknown',
-                name: track.name?.simpleText ?? 'unknown',
-                kind: track.kind ?? 'manual'
-            }))
-        });
+        const tracksMap = tracks.map((track) => ({
+            languageCode: track.languageCode ?? 'unknown',
+            name: track.name?.simpleText ?? 'unknown',
+            kind: track.kind ?? 'manual'
+        }))
+        const result = tracksMap[0];
+        return {
+            languageCode: result?.languageCode,
+            name: result?.name,
+            kind: result?.kind
+        }
     } catch (error) {
         console.error('[youtube-debug] InnerTube metadata request failed:', error);
     }
@@ -136,14 +136,22 @@ export const youtubeRouter = router({
                     }
 
                 } else {
-                    if (process.env.DEBUG_YOUTUBE_METADATA === 'true') {
-                        await inspectInnerTubeMetadata(videoUrl);
+                    const innerTubeRequest = await inspectInnerTubeMetadata(videoUrl);
+                    let transcriptData;
+                    if (
+                        innerTubeRequest?.languageCode !== undefined &&
+                        innerTubeRequest.languageCode !== 'unknown'
+                    ) {
+                        transcriptData = await YoutubeTranscript.fetchTranscript(videoUrl, {
+                            fetch: proxiedFetch,
+                            lang: innerTubeRequest.languageCode
+                        });
+                    } else {
+                        transcriptData = await YoutubeTranscript.fetchTranscript(videoUrl, {
+                            fetch: proxiedFetch,
+                            lang: language
+                        });
                     }
-
-                    const transcriptData = await YoutubeTranscript.fetchTranscript(videoUrl, {
-                        fetch: proxiedFetch,
-                        lang: language
-                    });
                     const transcriptText = transcriptData.reduce((acc, item) => {
                         const seconds = Math.floor(item.offset / 1000);
                         const bucket = Math.floor(seconds / intervalSeconds) * intervalSeconds;
