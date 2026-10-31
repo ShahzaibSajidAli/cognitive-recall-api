@@ -167,7 +167,8 @@ export const youtubeRouter = router({
                     // const aiOutput = await aiResponse(transcriptText, language);
                     return {
                         success: true,
-                        output: transcriptText
+                        output: transcriptText,
+                        message: innerTubeRequest?.languageCode 
                     }
                 }
 

@@ -45,9 +45,13 @@ else {
                 output.innerHTML = "Choose educational/coding video"
             }
             else {
-                const content = response.output
-            //
-            output.innerText = content;     
+                const content = response.output;
+                const message = response.message;
+                const text1 = document.createElement('h3');
+                const text2 = document.createElement('h3');
+                text1.innerText = content;
+                text2.innerText = message;
+                output.append(text1, text2);     
             }
         }
         catch (error: any) {
