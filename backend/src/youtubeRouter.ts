@@ -3,8 +3,8 @@ import { router, procedure } from './trpc.js';
 import { YoutubeTranscript, YoutubeTranscriptDisabledError } from 'youtube-transcript'
 import { aiResponse } from './aiResponser.js';
 import { TRPCError } from '@trpc/server';
-import { fetch as undiciFetch, ProxyAgent } from 'undici';
-import { typescriptTranscript } from './mockfiles/mockTranscript.js'
+import { typescriptTranscript } from './mockfiles/mockTranscript.js';
+import { proxiedFetch } from './adapters/proxyProvider.js';
 
 // For Mock Testing
 const rand = (min: number, max: number) =>
@@ -14,24 +14,6 @@ async function mockDelay(min: number, max: number) {
     const ms = rand(min, max);
     await new Promise<void>((resolve) => globalThis.setTimeout(() => resolve(), ms))
 }
-
-const proxyValue = process.env.SCRAPERAPI_PROXY?.trim();
-if (!proxyValue) {
-    throw new Error('SCRAPERAPI_PROXY is required to fetch YouTube transcripts.');
-}
-
-const proxyUri = /^[a-z][a-z\d+\-.]*:\/\//i.test(proxyValue)
-    ? proxyValue
-    : `http://${proxyValue}`;
-
-const dispatcher = new ProxyAgent({
-    uri: proxyUri,
-    proxyTls: { rejectUnauthorized: false },
-    requestTls: { rejectUnauthorized: false }
-});
-
-const proxiedFetch = ((url: any, init?: any) =>
-    undiciFetch(url, { ...init, dispatcher })) as unknown as typeof globalThis.fetch;
 
 const YOUTUBE_INNERTUBE_URL = 'https://www.youtube.com/youtubei/v1/player?prettyPrint=false';
 const YOUTUBE_INNERTUBE_CLIENT_VERSION = '20.10.38';
