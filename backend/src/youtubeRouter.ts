@@ -4,7 +4,6 @@ import { YoutubeTranscript, YoutubeTranscriptDisabledError } from 'youtube-trans
 import { aiResponse } from './aiResponser.js';
 import { TRPCError } from '@trpc/server';
 import { fetch as undiciFetch, ProxyAgent } from 'undici';
-import type { RequestInit as UndiciRequestInit } from 'undici';
 import { typescriptTranscript } from './mockfiles/mockTranscript.js'
 
 // For Mock Testing
@@ -16,69 +15,23 @@ async function mockDelay(min: number, max: number) {
     await new Promise<void>((resolve) => globalThis.setTimeout(() => resolve(), ms))
 }
 
-const providerNames = (process.env.PROXY_PROVIDERS ?? 'scraperapi')
-    .split(',')
-    .map((name) => name.trim().toLowerCase())
-    .filter(Boolean);
-
-const proxyUris = providerNames
-    .map((name) => process.env[`${name.toUpperCase()}_PROXY`]?.trim()
-        ?? (name === 'scraperapi' ? process.env.SCRAPERAPI_PROXY?.trim() : undefined))
-    .filter((value): value is string => Boolean(value))
-    .map((value) => /^[a-z][a-z\d+\-.]*:\/\//i.test(value) ? value : `http://${value}`);
-
-if (proxyUris.length === 0) {
-    throw new Error('At least one configured proxy is required. Set PROXY_PROVIDERS and provider proxy variables.');
+const proxyValue = process.env.SCRAPERAPI_PROXY?.trim();
+if (!proxyValue) {
+    throw new Error('SCRAPERAPI_PROXY is required to fetch YouTube transcripts.');
 }
 
-async function fetchWithProviderFailover(
-    url: string | URL,
-    init?: UndiciRequestInit,
-    expectJson = false
-): Promise<Response> {
-    for (const proxyUri of proxyUris) {
-        try {
-            const dispatcher = new ProxyAgent({
-                uri: proxyUri,
-                proxyTls: { rejectUnauthorized: false },
-                requestTls: { rejectUnauthorized: false }
-            });
-            const response = await undiciFetch(url, {
-                ...init,
-                dispatcher
-            });
-            const body = await response.text();
-            const text = body.toLowerCase();
-            const providerError = expectJson &&
-                /quota|credit|billing|rate limit|too many requests|throttl/.test(text);
+const proxyUri = /^[a-z][a-z\d+\-.]*:\/\//i.test(proxyValue)
+    ? proxyValue
+    : `http://${proxyValue}`;
 
-            if (response.status < 200 || response.status >= 300 || providerError) {
-                continue;
-            }
-
-            if (expectJson) {
-                try {
-                    JSON.parse(body);
-                } catch {
-                    continue;
-                }
-            }
-
-            return new Response(body, {
-                status: response.status,
-                statusText: response.statusText,
-                headers: Object.fromEntries(response.headers.entries())
-            });
-        } catch {
-            continue;
-        }
-    }
-
-    throw new Error('All configured proxy providers failed.');
-}
+const dispatcher = new ProxyAgent({
+    uri: proxyUri,
+    proxyTls: { rejectUnauthorized: false },
+    requestTls: { rejectUnauthorized: false }
+});
 
 const proxiedFetch = ((url: any, init?: any) =>
-    fetchWithProviderFailover(url, init)) as unknown as typeof globalThis.fetch;
+    undiciFetch(url, { ...init, dispatcher })) as unknown as typeof globalThis.fetch;
 
 const YOUTUBE_INNERTUBE_URL = 'https://www.youtube.com/youtubei/v1/player?prettyPrint=false';
 const YOUTUBE_INNERTUBE_CLIENT_VERSION = '20.10.38';
@@ -98,7 +51,7 @@ async function inspectInnerTubeMetadata(videoUrl: string) {
     }
 
     try {
-        const response = await fetchWithProviderFailover(YOUTUBE_INNERTUBE_URL, {
+        const response = await proxiedFetch(YOUTUBE_INNERTUBE_URL, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -113,7 +66,7 @@ async function inspectInnerTubeMetadata(videoUrl: string) {
                 },
                 videoId
             })
-        }, true);
+        });
 
         const body: unknown = await response.json();
         console.log(body);
