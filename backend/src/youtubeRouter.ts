@@ -131,28 +131,24 @@ export const youtubeRouter = router({
                             lang: innerTubeRequest.languageCode
                         });
                         console.log(innerTubeRequest.languageCode)
-                    } else {
-                        transcriptData = await YoutubeTranscript.fetchTranscript(videoUrl, {
-                            fetch: proxiedFetch,
-                            lang: language
-                        });
-                    }
-                    const transcriptText = transcriptData.reduce((acc, item) => {
-                        const seconds = Math.floor(item.offset / 1000);
-                        const bucket = Math.floor(seconds / intervalSeconds) * intervalSeconds;
 
-                        if (bucket !== currentBucket) {
-                            currentBucket = bucket;
-                            return `${acc}\n[${bucket}s] ${item.text}`
+                        const transcriptText = transcriptData.reduce((acc, item) => {
+                            const seconds = Math.floor(item.offset / 1000);
+                            const bucket = Math.floor(seconds / intervalSeconds) * intervalSeconds;
+
+                            if (bucket !== currentBucket) {
+                                currentBucket = bucket;
+                                return `${acc}\n[${bucket}s] ${item.text}`
+                            }
+
+                            return `${acc} ${item.text}`
+                        }, "").trim();
+                        // const aiOutput = await aiResponse(transcriptText, language);
+                        return {
+                            success: true,
+                            output: transcriptText,
+                            message: innerTubeRequest!.languageCode
                         }
-
-                        return `${acc} ${item.text}`
-                    }, "").trim();
-                    // const aiOutput = await aiResponse(transcriptText, language);
-                    return {
-                        success: true,
-                        output: transcriptText,
-                        message: innerTubeRequest!.languageCode
                     }
                 }
             }
