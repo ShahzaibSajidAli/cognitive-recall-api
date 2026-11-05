@@ -123,7 +123,7 @@ export async function proxiedFetch(url: any, init?: any): Promise<Response> {
             switchProvider();
         }
     }
-
+// Use the appropriate dispatcher based on the current provider
     const dispatcher = getDispatcher();
     return undiciFetch(url, { ...init, dispatcher }) as unknown as Promise<Response>;
 }
