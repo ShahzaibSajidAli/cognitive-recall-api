@@ -16,19 +16,24 @@ if (localEnvPath) {
     console.log('Production Environment Detected!. Using cloud injected variables.');
 }
 
-const SCRAPERAPI_PROXY = process.env.SCRAPERAPI_PROXY?.trim();
-const ZENROWS_PROXY = process.env.ZENROWS_PROXY?.trim();
+const SCRAPER_PROXY1 = process.env.SCRAPER_PROXY1?.trim();
+const SCRAPER_PROXY2 = process.env.SCRAPER_PROXY2?.trim();
 
-console.log(`[proxyProvider] SCRAPERAPI_PROXY: ${SCRAPERAPI_PROXY}`);
-console.log(`[proxyProvider] ZENROWS_PROXY: ${ZENROWS_PROXY}`);
+console.log(`[proxyProvider] SCRAPER_PROXY1 configured: ${Boolean(SCRAPER_PROXY1)}`);
+console.log(`[proxyProvider] SCRAPER_PROXY2 configured: ${Boolean(SCRAPER_PROXY2)}`);
 
-const SCRAPERAPI_URI = /^[a-z][a-z\d+\-.]*:\/\//i.test(SCRAPERAPI_PROXY || '')
-    ? SCRAPERAPI_PROXY
-    : `http://${SCRAPERAPI_PROXY}`;
+function normalizeProxyUri(proxy: string | undefined, name: string): string {
+    if (!proxy) {
+        throw new Error(`${name} is required.`);
+    }
 
-const ZENROWS_URI = /^[a-z][a-z\d+\-.]*:\/\//i.test(ZENROWS_PROXY || '')
-    ? ZENROWS_PROXY
-    : `http://${ZENROWS_PROXY}`;
+    return /^[a-z][a-z\d+\-.]*:\/\//i.test(proxy)
+        ? proxy
+        : `http://${proxy}`;
+}
+
+const scraperProxy1Uri = normalizeProxyUri(SCRAPER_PROXY1, 'SCRAPER_PROXY1');
+const scraperProxy2Uri = normalizeProxyUri(SCRAPER_PROXY2, 'SCRAPER_PROXY2');
 
 // Fetch API Key from the URI if present
 function fetchApiKeyFromUri(uri: string | undefined): string | undefined {
@@ -37,89 +42,71 @@ function fetchApiKeyFromUri(uri: string | undefined): string | undefined {
 }
 
 let Switchable = {
-    SCRAPERAPI: 'YES',
-    ZENROWS: 'YES',
+    SCRAPER_PROXY1: 'YES',
+    SCRAPER_PROXY2: 'YES',
 };
 
-let currentProvider: 'SCRAPERAPI' | 'ZENROWS';
+let currentProvider: 'SCRAPER_PROXY1' | 'SCRAPER_PROXY2';
 
-if (Switchable.SCRAPERAPI === 'YES') {
-    currentProvider = 'SCRAPERAPI';
+if (Switchable.SCRAPER_PROXY1 === 'YES') {
+    currentProvider = 'SCRAPER_PROXY1';
 } else {
-    currentProvider = 'ZENROWS';
+    currentProvider = 'SCRAPER_PROXY2';
 }
 
 let requestCount = 0;
 const MAX_REQUESTS_PER_PROVIDER = 6;
 
 function switchProvider() {
-    if (Switchable['SCRAPERAPI'] === 'NO' && Switchable['ZENROWS'] === 'NO') {
-        console.error(`[proxyProvider] Both providers have exhausted their credits. Please check your API keys and usage limits.`);
-        throw new Error('Both providers have exhausted their credits.');
+    if (Switchable.SCRAPER_PROXY1 === 'NO' && Switchable.SCRAPER_PROXY2 === 'NO') {
+        console.error('[proxyProvider] Both ScraperAPI proxies have exhausted their credits.');
+        throw new Error('Both ScraperAPI proxies have exhausted their credits.');
     }
 
-    if (currentProvider === 'SCRAPERAPI') {
-        currentProvider = 'ZENROWS';
+    if (currentProvider === 'SCRAPER_PROXY1') {
+        currentProvider = 'SCRAPER_PROXY2';
     } else {
-        currentProvider = 'SCRAPERAPI';
+        currentProvider = 'SCRAPER_PROXY1';
     }
     requestCount = 0;
 }
 
-const scraperDispatcher = new ProxyAgent({
-    uri: SCRAPERAPI_URI!,
+const scraperProxy1Dispatcher = new ProxyAgent({
+    uri: scraperProxy1Uri,
     proxyTls: { rejectUnauthorized: false },
     requestTls: { rejectUnauthorized: false },
 });
 
-const zenrowsDispatcher = new ProxyAgent({
-    uri: ZENROWS_URI!,
+const scraperProxy2Dispatcher = new ProxyAgent({
+    uri: scraperProxy2Uri,
     proxyTls: { rejectUnauthorized: false },
     requestTls: { rejectUnauthorized: false },
 });
 
 function getDispatcher(): ProxyAgent {
-    if (currentProvider === 'SCRAPERAPI') {
-        return scraperDispatcher;
+    if (currentProvider === 'SCRAPER_PROXY1') {
+        return scraperProxy1Dispatcher;
     }
-    return zenrowsDispatcher;
+    return scraperProxy2Dispatcher;
 }
 
-async function limitExceededCheck(key: string) {
-    if (key === 'SCRAPERAPI') {
-        const apiKey = fetchApiKeyFromUri(SCRAPERAPI_URI);
-        const response = await globalThis
-            .fetch(`http://api.scraperapi.com/account?api_key=${apiKey}`)
-            .then(response => response.json());
+async function limitExceededCheck(key: 'SCRAPER_PROXY1' | 'SCRAPER_PROXY2') {
+    const uri = key === 'SCRAPER_PROXY1'
+        ? scraperProxy1Uri
+        : scraperProxy2Uri;
+    const apiKey = fetchApiKeyFromUri(uri);
+    const response = await globalThis
+        .fetch(`http://api.scraperapi.com/account?api_key=${encodeURIComponent(apiKey ?? '')}`)
+        .then(response => response.json());
 
-        if (response.requestCount >= response.requestLimit) {
-            console.warn(`[proxyProvider] ScraperAPI credits exhausted. Switching provider.`);
-            Switchable['SCRAPERAPI'] = 'NO';
-            return true;
-        } else {
-            Switchable['SCRAPERAPI'] = 'YES';
-            return false;
-        }
+    if (response.requestCount >= response.requestLimit) {
+        console.warn(`[proxyProvider] ${key} credits exhausted. Switching proxy.`);
+        Switchable[key] = 'NO';
+        return true;
     }
 
-    if (key === 'ZENROWS') {
-        const apiKey = fetchApiKeyFromUri(ZENROWS_URI);
-        const response = await globalThis.fetch('https://api.zenrows.com/v1/account', {
-            method: 'GET',
-            headers: {
-                'X-API-KEY': apiKey!,
-            },
-        }).then(response => response.json());
-
-        if (response.requestCount >= response.requestLimit) {
-            console.warn(`[proxyProvider] ZenRows credits exhausted. Switching provider.`);
-            Switchable['ZENROWS'] = 'NO';
-            return true;
-        } else {
-            Switchable['ZENROWS'] = 'YES';
-            return false;
-        }
-    }
+    Switchable[key] = 'YES';
+    return false;
 }
 
 export async function proxiedFetch(url: any, init?: any): Promise<Response> {
