@@ -34,7 +34,8 @@ function normalizeProxyUri(proxy: string | undefined, name: string): string {
 
 const scraperProxy1Uri = normalizeProxyUri(SCRAPER_PROXY1, 'SCRAPER_PROXY1');
 const scraperProxy2Uri = normalizeProxyUri(SCRAPER_PROXY2, 'SCRAPER_PROXY2');
-
+console.log(`[proxyProvider] SCRAPER_PROXY1 URI: ${scraperProxy1Uri}`);
+console.log(`[proxyProvider] SCRAPER_PROXY2 URI: ${scraperProxy2Uri}`);
 // Fetch API Key from the URI if present
 function fetchApiKeyFromUri(uri: string | undefined): string | undefined {
     const url = new URL(uri!);
@@ -98,6 +99,7 @@ async function limitExceededCheck(key: 'SCRAPER_PROXY1' | 'SCRAPER_PROXY2') {
     const response = await globalThis
         .fetch(`http://api.scraperapi.com/account?api_key=${encodeURIComponent(apiKey ?? '')}`)
         .then(response => response.json());
+    console.log(`[proxyProvider] Credits for ${key}: ${response.requestCount}/${response.requestLimit}`);
 
     if (response.requestCount >= response.requestLimit) {
         console.warn(`[proxyProvider] ${key} credits exhausted. Switching proxy.`);
@@ -115,6 +117,7 @@ export async function proxiedFetch(url: any, init?: any): Promise<Response> {
     if (response === true) {
         switchProvider();
     }
+    console.log(`[proxyProvider] Using ${currentProvider} for request to ${url}`);
 
     requestCount++;
 
