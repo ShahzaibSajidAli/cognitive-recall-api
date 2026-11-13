@@ -1,0 +1,35 @@
+{
+  "type": "diff",
+  "version": "9",
+  "dialect": "postgres",
+  "id": "17a75904-f1e8-4732-a38a-f35b62401e67",
+  "prevIds": [
+    "1aa20308-7796-4c55-bd79-a064b921f626"
+  ],
+  "footprints": [
+    {
+      "statementType": "drop_column",
+      "statementTarget": [
+        "column",
+        "public",
+        "videos",
+        "transcript"
+      ],
+      "writes": [
+        "s|col|public.videos.transcript",
+        "n|col|public.videos.transcript",
+        "e|col|public.videos.transcript"
+      ],
+      "reads": [
+        "n|tbl|public.videos",
+        "n|sch|public"
+      ]
+    }
+  ],
+  "deltas": [
+    {
+      "op": "drop",
+      "key": "columns\u0000[\"public\",\"videos\",\"transcript\"]"
+    }
+  ]
+}

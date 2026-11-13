@@ -49,10 +49,10 @@ async function handleFetch(sendResponse: (response: any) => void, lang: string) 
         const response = await trpcClient.getTranscript.mutate({
             videoUrl: currentUrl,
             language: lang
-        });
+        })!;
         
-        console.log('Success! Backend sent back the transcript:', response.output);
-        sendResponse({ success: true, output: response.output, message: response.message
+        console.log('Success! Backend sent back the transcript:', response!.output);
+        sendResponse({ success: true, output: response!.output, message: response!.message
         });
     }
     catch (error: any) {

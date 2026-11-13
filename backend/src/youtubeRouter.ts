@@ -5,6 +5,9 @@ import { aiResponse } from './aiResponser.js';
 import { TRPCError } from '@trpc/server';
 import { typescriptTranscript } from './mockfiles/mockTranscript.js';
 import { proxiedFetch } from './adapters/proxyProvider.js';
+import { db } from './db/index.js';
+import { eq } from 'drizzle-orm';
+import { videos } from './db/drizzle/schema/schema.js';
 
 // For Mock Testing
 const rand = (min: number, max: number) =>
@@ -120,34 +123,61 @@ export const youtubeRouter = router({
                     }
 
                 } else {
-                    const innerTubeRequest = await inspectInnerTubeMetadata(videoUrl);
-                    let transcriptData;
-                    if (
-                        innerTubeRequest?.languageCode !== undefined &&
-                        innerTubeRequest.languageCode !== 'unknown'
-                    ) {
-                        transcriptData = await YoutubeTranscript.fetchTranscript(videoUrl, {
-                            fetch: proxiedFetch,
-                            lang: innerTubeRequest.languageCode
-                        });
-                        console.log(innerTubeRequest.languageCode)
+                    // Database Check: If the video already exists in the database, return the stored questions and coding practices
+                    const existingVideo = await db.select().from(videos).where(eq(videos.videoId,
+                        extractYoutubeVideoId(videoUrl) || 'unknown'
+                    ));
+                    if (!existingVideo) {
+                        const innerTubeRequest = await inspectInnerTubeMetadata(videoUrl);
+                        let transcriptData;
+                        if (
+                            innerTubeRequest?.languageCode !== undefined &&
+                            innerTubeRequest.languageCode !== 'unknown'
+                        ) {
+                            transcriptData = await YoutubeTranscript.fetchTranscript(videoUrl, {
+                                fetch: proxiedFetch,
+                                lang: innerTubeRequest.languageCode
+                            });
+                            console.log(innerTubeRequest.languageCode)
 
-                        const transcriptText = transcriptData.reduce((acc, item) => {
-                            const seconds = Math.floor(item.offset / 1000);
-                            const bucket = Math.floor(seconds / intervalSeconds) * intervalSeconds;
+                            const transcriptText = transcriptData.reduce((acc, item) => {
+                                const seconds = Math.floor(item.offset / 1000);
+                                const bucket = Math.floor(seconds / intervalSeconds) * intervalSeconds;
 
-                            if (bucket !== currentBucket) {
-                                currentBucket = bucket;
-                                return `${acc}\n[${bucket}s] ${item.text}`
+                                if (bucket !== currentBucket) {
+                                    currentBucket = bucket;
+                                    return `${acc}\n[${bucket}s] ${item.text}`
+                                }
+
+                                return `${acc} ${item.text}`
+                            }, "").trim();
+                            const aiOutput = await aiResponse(transcriptText, language);
+                            // Insert the transcript and AI output into the database
+                            await db.insert(videos).values([
+                                {
+                                    videoId: extractYoutubeVideoId(videoUrl) || '',
+                                    questions: aiOutput?.questions.general,
+                                    codingPractices: aiOutput?.questions.coding,
+                                    createdAt: new Date()
+                                } as any
+                            ])
+
+                            return {
+                                success: true,
+                                output: aiOutput,
+                                message: innerTubeRequest!.languageCode
                             }
-
-                            return `${acc} ${item.text}`
-                        }, "").trim();
-                        const aiOutput = await aiResponse(transcriptText, language);
+                        }
+                    }
+                    else {
+                        // If the video already exists in the database, return the stored questions and coding practices
                         return {
                             success: true,
-                            output: aiOutput,
-                            message: innerTubeRequest!.languageCode
+                            output: {
+                                questions: existingVideo[0]?.questions,
+                                codingPractices: existingVideo[0]?.codingPractices
+                            },
+                            message: 'Retrieved from database'
                         }
                     }
                 }
