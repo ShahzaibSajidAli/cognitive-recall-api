@@ -20,6 +20,9 @@ else {
 const pool = new Pool({
     connectionString: process.env.DATABASE_URL,
     max: 10,
+    ssl: {
+        rejectUnauthorized: false
+    }
 })
 
 const db = drizzle({ client: pool });
