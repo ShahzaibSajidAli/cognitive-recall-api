@@ -45,13 +45,16 @@ else {
                 output.innerHTML = "Choose educational/coding video"
             }
             else {
-                const content = response.output;
-                const message = response.message;
-                const text1 = document.createElement('h3');
-                const text2 = document.createElement('h3');
-                text1.innerText = content;
-                text2.innerText = message;
-                output.append(text1, text2);     
+                // Display the questions and coding practice problems in two separate sections
+                const questionsSection = document.createElement('div');
+                questionsSection.innerHTML = `<h3>Questions:</h3><p>${response.output.questions}</p>`;
+                
+                const codingSection = document.createElement('div');
+                codingSection.innerHTML = `<h3>Coding Practice Problems:</h3><p>${response.output.codingPractice}</p>`;
+                
+                output.innerHTML = ''; // Clear previous content
+                output.appendChild(questionsSection);
+                output.appendChild(codingSection);     
             }
         }
         catch (error: any) {
