@@ -124,8 +124,8 @@ export const youtubeRouter = router({
 
                 } else { 
                     // Database Check: If the video already exists in the database, returns the stored questions and coding practices
-                    const existingVideo = await db.select().from(videos).where(eq(videos.videoId,
-                        extractYoutubeVideoId(videoUrl) || 'unknown'
+                    const [existingVideo] = await db.select().from(videos).where(eq(videos.videoId,
+                        (extractYoutubeVideoId(videoUrl) || 'unknown')
                     ));
                     if (!existingVideo) {
                         const innerTubeRequest = await inspectInnerTubeMetadata(videoUrl);
@@ -152,7 +152,7 @@ export const youtubeRouter = router({
                                 return `${acc} ${item.text}`
                             }, "").trim();
                             const aiOutput = await aiResponse(transcriptText, language);
-                            // Insert the transcript and AI output into the database
+                            // Insert the AI output into the database
                             await db.insert(videos).values([
                                 {
                                     videoId: extractYoutubeVideoId(videoUrl) || '',
@@ -174,8 +174,8 @@ export const youtubeRouter = router({
                         return {
                             success: true,
                             output: {
-                                questions: existingVideo[0]?.questions,
-                                codingPractices: existingVideo[0]?.codingPractices
+                                questions: existingVideo?.questions,
+                                codingPractices: existingVideo?.codingPractices
                             },
                             message: 'Retrieved from database'
                         }
