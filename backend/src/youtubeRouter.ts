@@ -122,11 +122,13 @@ export const youtubeRouter = router({
                         message: language
                     }
 
-                } else { 
+                } else {
                     // Database Check: If the video already exists in the database, returns the stored questions and coding practices
                     const [existingVideo] = await db.select().from(videos).where(eq(videos.videoId,
                         (extractYoutubeVideoId(videoUrl) || 'unknown')
                     ));
+                    console.log('Database check for existing video entry completed. Existing video found:', existingVideo);
+
                     if (!existingVideo) {
                         const innerTubeRequest = await inspectInnerTubeMetadata(videoUrl);
                         let transcriptData;
@@ -162,6 +164,8 @@ export const youtubeRouter = router({
                                 } as any
                             ])
 
+                            console.log('New video entry added to the database.');
+                            console.log('AI output generated and returned:', aiOutput);
                             return {
                                 success: true,
                                 output: aiOutput,
@@ -171,14 +175,18 @@ export const youtubeRouter = router({
                     }
                     else {
                         // If the video already exists in the database, return the stored questions and coding practices
-                        return {
+                        const response = {
                             success: true,
                             output: {
                                 questions: existingVideo?.questions,
                                 codingPractices: existingVideo?.codingPractices
                             },
                             message: 'Retrieved from database'
-                        }
+                        };
+
+                        console.log('Video already exists in the database. Returning stored questions and coding practices. Questions:', existingVideo?.questions, 'Coding Practices:', existingVideo?.codingPractices
+                        );
+                        return response;
                     }
                 }
             }
