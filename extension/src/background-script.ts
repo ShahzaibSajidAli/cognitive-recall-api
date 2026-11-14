@@ -51,6 +51,8 @@ async function handleFetch(sendResponse: (response: any) => void, lang: string) 
             language: lang
         })!;
         
+        console.log('Mutation request completed. Backend response:', response?.output);
+
         console.log('Success! Backend sent back the transcript:', response!.output);
         sendResponse({ success: true, output: response!.output, message: response!.message
         });
