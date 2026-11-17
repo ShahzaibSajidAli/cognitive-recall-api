@@ -202,4 +202,34 @@ export const youtubeRouter = router({
         })
 })
 
+// Router for generating follow-up questions based on user's previous answers
+export const followUpRouter = router({
+    generateFollowUpQuestions: procedure
+        .input(
+            z.object({
+                answers: z.array(z.string()).describe("The user's previous answers"),
+                originalQuestions: z.array(z.string()).describe("The original questions that were asked")
+            })
+        )
+        .mutation(async ({ input }) => {
+            try {
+                const { answers, originalQuestions } = input;
+                const aiOutput = await aiResponseForFollowUp(answers, originalQuestions);
+                return {
+                    success: true,
+                    output: aiOutput,
+                    message: 'Follow-up questions generated successfully'
+                }
+            } catch (error) {
+                console.error("generateFollowUpQuestions failed:", error);
+                throw new TRPCError({
+                    code: 'INTERNAL_SERVER_ERROR',
+                    message: 'Failed to generate follow-up questions. Please try again.',
+                    cause: error
+                });
+            }
+        })
+});
+
+export type followUpRouterType = typeof followUpRouter;
 export type youtubeRouterType = typeof youtubeRouter;

@@ -1,5 +1,5 @@
 import { createTRPCProxyClient, httpBatchLink } from "@trpc/client";
-import type { youtubeRouterType } from "../../backend/src/youtubeRouter";
+import type { youtubeRouterType, followUpRouterType } from "../../backend/src/youtubeRouter";
 
 export const trpcClient = createTRPCProxyClient<youtubeRouterType>({
     links: [
@@ -17,6 +17,23 @@ export const trpcClient = createTRPCProxyClient<youtubeRouterType>({
         })
     ]
 });
+
+export const trpcFollowUpClient = createTRPCProxyClient<followUpRouterType>({
+    links: [
+        httpBatchLink({
+            url: import.meta.env.PUBLIC_IP,
+            fetch(url, options) {
+                const timeoutSignal = AbortSignal.timeout(120_000);
+
+                const combinedSignal = options?.signal ? AbortSignal.any([options?.signal, timeoutSignal]) : timeoutSignal;
+                return fetch(url, {
+                    ...options,
+                    signal: combinedSignal
+                })
+            }
+        })
+    ]
+}); 
 
 async function handleFetch(sendResponse: (response: any) => void, lang: string) {
     try {
