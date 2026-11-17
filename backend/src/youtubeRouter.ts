@@ -157,10 +157,8 @@ export const youtubeRouter = router({
                             // Insert the AI output into the database
                             await db.insert(videos).values([
                                 {
-                                    videoId: extractYoutubeVideoId(videoUrl) || '',
-                                    questions: aiOutput?.questions.general,
-                                    codingPractices: aiOutput?.questions.coding,
-                                    createdAt: new Date()
+                                    videoId: extractYoutubeVideoId(videoUrl) || 'unknown',
+                                    concepts: aiOutput?.concepts as any
                                 } as any
                             ])
 
@@ -178,13 +176,13 @@ export const youtubeRouter = router({
                         const response = {
                             success: true,
                             output: {
-                                questions: existingVideo?.questions,
-                                codingPractices: existingVideo?.codingPractices
+                                questions: existingVideo.concepts.flatMap((concept: any) => concept.questions.general),
+                                codingPractices: existingVideo.concepts.flatMap((concept: any) => concept.questions.coding)
                             },
                             message: 'Retrieved from database'
                         };
 
-                        console.log('Video already exists in the database. Returning stored questions and coding practices. Questions:', existingVideo?.questions, 'Coding Practices:', existingVideo?.codingPractices
+                        console.log('Video already exists in the database. Returning stored questions and coding practices. Questions:', response.output.questions, 'Coding Practices:', response.output.codingPractices
                         );
                         return response;
                     }
