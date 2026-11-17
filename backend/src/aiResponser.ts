@@ -43,7 +43,7 @@ const geminiAI = createGoogleGenerativeAI({
 
 const aiModel = geminiAI("gemini-3.1-flash-lite");
 
-const SYSTEM_PROMPT = `
+const SYSTEM_PROMPT_FOR_TRANSCRIPT = `
 You are a Socratic tutor that turns a YouTube video transcript into active-recall study material.
 
 GROUNDING RULES (highest priority)
@@ -70,7 +70,7 @@ OUTPUT LANGUAGE
 - Write all questions and tasks in the requested target language. Keep code, identifiers, and technical terms in their original form.
 `.trim();
 
-const buildPrompt = (opts: { transcriptText: string, language: string, videoTitle?: string }) => `
+const buildPromptForTranscript = (opts: { transcriptText: string, language: string, videoTitle?: string }) => `
 Target language: ${opts.language}
 ${opts.videoTitle ? `Video title: ${opts.videoTitle}\n` : ''}
 Each line of the transcript below starts with its time in seconds, like [125s].
@@ -84,6 +84,47 @@ Task:
 2. If the video teaches code, write 2-4 practice exercises as described in your rules; otherwise return an empty coding array.
 3. Before finalizing, check each question against the transcript. Remove any you cannot support with a specific line.
 `.trim()
+
+const buildPromptForFollowUp = (opts: { answers: any[], originalQuestions: any[] }) => `
+You are a Socratic tutor that generates follow-up questions based on a learner's previous answers(${opts.answers.join(', ')}).
+
+Task:
+1. Write 5-8 Socratic questions (fewer if the answers are short), each with the timestampSeconds where its answer appears.
+2. Before finalizing, check each question against the answers. Remove any you cannot support with a specific line.
+3. Score the quality of the user's previous answers on a scale from 0 to 100, where 0 is very poor and 100 is excellent.
+`.trim()
+
+const SYSTEM_PROMPT_FOR_FOLLOW_UP = `
+You are a Socratic tutor that generates follow-up questions based on a learner's previous answers.
+
+GROUNDING RULES (highest priority)
+1. Use ONLY information stated in the user 's previous answers. Never add outside facts, examples, or topics.
+2. Every question must be answerable from a specific passage of the user's previous answers.
+3. If the user's previous answers are too short, unclear, or empty of educational content, return fewer items instead of padding. An empty array is valid.
+
+QUESTION QUALITY
+- Write Socratic questions that test understanding: "why", "how", "what would happen if", "what is the difference between". Avoid yes/no questions and trivia such as names, numbers, or exact wording.
+- Cover the main ideas in order, spread across the whole set of previous answers rather than only the start.
+- Each question must stand alone: a learner who has not just read the previous answers should still understand it, so never write "the user said" or "in this part".
+- One idea per question; no duplicates or near-duplicates.
+
+OUTPUT LANGUAGE
+- Write all questions in the requested target language. Keep code, identifiers, and technical terms in their original form.
+`.trim();
+
+const FollowUpQuestions = z.object({
+    questions: z.array(z.object({
+        question: z.string().describe("A clear question about the concept a learner should be able to answer after watching the video"),
+        timestampSeconds: z.number().describe("Second in the video where the answer is discussed; use the transcript's [Ns] markers"),
+    })),
+    coding: z.array(z.object({
+        task: z.string().describe("A short practice task the learner should complete"),
+        code: z.string().describe("Starter or example code for the task"),
+        lang: z.string().describe("Syntax highlighter language id, e.g. 'typescript'"),
+        filename: z.string().describe("Label for the code block, e.g. 'app.ts'"),
+    })), 
+    score: z.number().describe("A score indicating the quality of the user's previous answers, on a scale from 0 to 100"),
+});
 
 const TranscriptQuestions = z.object({
     title: z.string().describe("The title of the YouTube video"),
@@ -115,7 +156,7 @@ const mockTranscriptQuestionsData = {
     educational: true
 };
 
-export const aiResponse = async (transcript: string, language: string) => {
+export const aiResponseForTranscript = async (transcript: string, language: string) => {
     if (process.env.MOCK_AI === 'true') {
         await mockDelay(5000, 15000);
         return mockTranscriptQuestionsData;
@@ -131,8 +172,51 @@ export const aiResponse = async (transcript: string, language: string) => {
                 output: Output.object({
                     schema: TranscriptQuestions
                 }),
-                system: SYSTEM_PROMPT,
-                prompt: buildPrompt({ transcriptText: transcript, language }),
+                system: SYSTEM_PROMPT_FOR_TRANSCRIPT,
+                prompt: buildPromptForTranscript({ transcriptText: transcript, language }),
+                temperature: 0.3,
+                maxRetries: 0,
+                providerOptions: {
+                    google: {
+                        thinkingConfig: { thinkingBudget: 0 },
+                    },
+                },
+            });
+
+            return output; // Exit immediately on success
+        } catch (error: any) {
+            const isRateLimited = error?.message?.includes("Rate limit exceeded") || error?.message?.includes("429") || error?.status === 429;
+            const waitTime = isRateLimited ? 65_000 : attempts * 10_000; // 65s for rate limit, else exponential backoff
+            console.error(`Error on attempt ${attempts}:`, error?.message || error);
+
+            if (attempts < maxAttempts) {
+                console.log(`Waiting ${waitTime / 1000}s for rolling token limits to clear...`);
+                await setTimeout(waitTime);
+            } else {
+                throw new Error('Failed to generate questions after multiple attempts. Please try again later.');
+            }
+        }
+    }
+};
+
+export const aiResponseForFollowUp = async (answers: any[], originalQuestions: any[]) => {
+    if (process.env.MOCK_AI === 'true') {
+        await mockDelay(5000, 15000);
+        return mockTranscriptQuestionsData;
+    }
+    const maxAttempts = 3;
+
+    for (let attempts = 1; attempts <= maxAttempts; attempts++) {
+        try {
+            console.log(`Generating questions (Attempt ${attempts}/${maxAttempts})...`);
+
+            const { output } = await generateText({
+                model: aiModel,
+                output: Output.object({
+                    schema: FollowUpQuestions
+                }),
+                system: SYSTEM_PROMPT_FOR_FOLLOW_UP,
+                prompt: buildPromptForFollowUp({ answers, originalQuestions }),
                 temperature: 0.3,
                 maxRetries: 0,
                 providerOptions: {

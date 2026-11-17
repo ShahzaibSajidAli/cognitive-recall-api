@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { router, procedure } from './trpc.js';
 import { YoutubeTranscript, YoutubeTranscriptDisabledError } from 'youtube-transcript'
-import { aiResponse } from './aiResponser.js';
+import { aiResponseForTranscript, aiResponseForFollowUp } from './aiResponser.js';
 import { TRPCError } from '@trpc/server';
 import { typescriptTranscript } from './mockfiles/mockTranscript.js';
 import { proxiedFetch } from './adapters/proxyProvider.js';
@@ -115,7 +115,7 @@ export const youtubeRouter = router({
 
                         return `${acc} ${item.text}`
                     }, "").trim();
-                    const aiOutput = await aiResponse(transcriptText, language);
+                    const aiOutput = await aiResponseForTranscript(transcriptText, language);
                     return {
                         success: true,
                         output: aiOutput,
@@ -153,7 +153,7 @@ export const youtubeRouter = router({
 
                                 return `${acc} ${item.text}`
                             }, "").trim();
-                            const aiOutput = await aiResponse(transcriptText, language);
+                            const aiOutput = await aiResponseForTranscript(transcriptText, language);
                             // Insert the AI output into the database
                             await db.insert(videos).values([
                                 {
