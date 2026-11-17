@@ -208,13 +208,14 @@ export const followUpRouter = router({
         .input(
             z.object({
                 answers: z.array(z.string()).describe("The user's previous answers"),
-                originalQuestions: z.array(z.string()).describe("The original questions that were asked")
-            })
+                originalQuestions: z.array(z.string()).describe("The original questions that were asked"),
+                followUpQuestions: z.array(z.string()).optional().describe("The follow-up questions generated based on the user's previous answers")
+            }).describe("Input for generating follow-up questions")
         )
         .mutation(async ({ input }) => {
             try {
-                const { answers, originalQuestions } = input;
-                const aiOutput = await aiResponseForFollowUp(answers, originalQuestions);
+                const { answers, originalQuestions, followUpQuestions } = input;
+                const aiOutput = await aiResponseForFollowUp(answers, originalQuestions, followUpQuestions);
                 return {
                     success: true,
                     output: aiOutput,

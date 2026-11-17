@@ -85,9 +85,11 @@ Task:
 3. Before finalizing, check each question against the transcript. Remove any you cannot support with a specific line.
 `.trim()
 
-const buildPromptForFollowUp = (opts: { answers: any[], originalQuestions: any[] }) => `
-You are a Socratic tutor that generates follow-up questions based on a learner's previous answers(${opts.answers.join(', ')}).
-
+const buildPromptForFollowUp = (opts: { answers: any[], originalQuestions: any[], followUpQuestions?: any[] }) => `
+You are a Socratic tutor that generates follow-up questions based on a learner's previous answers(${opts.answers.join(', ')}). OR Previous Follow up questions asked and their answers ${opts.followUpQuestions} if available.
+If the learner's previous answers score less than 50, you must generate fewer questions and focus on the most important concepts.
+If the learner's previous answers score 50-90, you must generate more questions and cover a wider range of concepts.
+If the learner's previous answers score 90-100, you don't need to generate any follow-up questions.
 Task:
 1. Write 5-8 Socratic questions (fewer if the answers are short), each with the timestampSeconds where its answer appears.
 2. Before finalizing, check each question against the answers. Remove any you cannot support with a specific line.
@@ -122,7 +124,8 @@ const FollowUpQuestions = z.object({
         code: z.string().describe("Starter or example code for the task"),
         lang: z.string().describe("Syntax highlighter language id, e.g. 'typescript'"),
         filename: z.string().describe("Label for the code block, e.g. 'app.ts'"),
-    })), 
+    })),
+    isMastered: z.boolean().describe("Indicates if the learner has mastered the concepts based on their previous answers"),
     score: z.number().describe("A score indicating the quality of the user's previous answers, on a scale from 0 to 100"),
 });
 
@@ -199,7 +202,7 @@ export const aiResponseForTranscript = async (transcript: string, language: stri
     }
 };
 
-export const aiResponseForFollowUp = async (answers: any[], originalQuestions: any[]) => {
+export const aiResponseForFollowUp = async (answers: any[], originalQuestions: any[], followUpQuestions: string[] | undefined) => {
     if (process.env.MOCK_AI === 'true') {
         await mockDelay(5000, 15000);
         return mockTranscriptQuestionsData;
