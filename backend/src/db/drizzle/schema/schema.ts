@@ -49,9 +49,13 @@ export const gradebook = pgTable("gradebook", {
     index("gradebook_sessions_id_index").on(table.sessionId)
   ]);
 
+export type VideoQuestions = {
+  general: { question: string; timestampSeconds: number }[];
+  coding: { task: string; code: string; lang: string; filename: string }[];
+};
 export const videos = pgTable("videos", {
   videoId: varchar("video_id", { length: 255 }).primaryKey(),
-  questions: jsonb("concepts").$type<{general: { question: string; timestampSeconds: number }[]; coding: { task: string; code: string; lang: string; filename: string }[]}>().notNull().default([]),
+  questions: jsonb("questions").$type<VideoQuestions>().notNull().default({ general: [], coding: [] }),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 

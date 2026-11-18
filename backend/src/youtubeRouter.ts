@@ -154,11 +154,17 @@ export const youtubeRouter = router({
                                 return `${acc} ${item.text}`
                             }, "").trim();
                             const aiOutput = await aiResponseForTranscript(transcriptText, language);
+                            if (!aiOutput) {
+                                throw new Error('Failed to generate questions from transcript.');
+                            }
+                            const questions = 'questions' in aiOutput
+                                ? aiOutput.questions
+                                : aiOutput.concepts.questions;
                             // Insert the AI output into the database
                             await db.insert(videos).values([
                                 {
                                     videoId: extractYoutubeVideoId(videoUrl) || 'unknown',
-                                    questions: aiOutput?.questions as any
+                                    questions: questions as any
                                 } as any
                             ])
 

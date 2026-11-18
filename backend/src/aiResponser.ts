@@ -115,16 +115,18 @@ OUTPUT LANGUAGE
 `.trim();
 
 const FollowUpQuestions = z.object({
-    questions: z.array(z.object({
-        question: z.string().describe("A clear question about the concept a learner should be able to answer after watching the video"),
-        timestampSeconds: z.number().describe("Second in the video where the answer is discussed; use the transcript's [Ns] markers"),
-    })),
-    coding: z.array(z.object({
-        task: z.string().describe("A short practice task the learner should complete"),
-        code: z.string().describe("Starter or example code for the task"),
-        lang: z.string().describe("Syntax highlighter language id, e.g. 'typescript'"),
-        filename: z.string().describe("Label for the code block, e.g. 'app.ts'"),
-    })),
+    questions: z.object({
+        general: z.array(z.object({
+            question: z.string().describe("A clear question about the concept a learner should be able to answer after watching the video"),
+            timestampSeconds: z.number().describe("Second in the video where the answer is discussed; use the transcript's [Ns] markers"),
+        })),
+        coding: z.array(z.object({
+            task: z.string().describe("A short practice task the learner should complete"),
+            code: z.string().describe("Starter or example code for the task"),
+            lang: z.string().describe("Syntax highlighter language id, e.g. 'typescript'"),
+            filename: z.string().describe("Label for the code block, e.g. 'app.ts'"),
+        })),
+    }),
     isMastered: z.boolean().describe("Indicates if the learner has mastered the concepts based on their previous answers"),
     score: z.number().describe("A score indicating the quality of the user's previous answers, on a scale from 0 to 100"),
 });
