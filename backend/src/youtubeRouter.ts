@@ -158,7 +158,7 @@ export const youtubeRouter = router({
                             await db.insert(videos).values([
                                 {
                                     videoId: extractYoutubeVideoId(videoUrl) || 'unknown',
-                                    concepts: aiOutput?.concepts as any
+                                    questions: aiOutput?.questions as any
                                 } as any
                             ])
 
@@ -176,8 +176,8 @@ export const youtubeRouter = router({
                         const response = {
                             success: true,
                             output: {
-                                questions: existingVideo.concepts.flatMap((concept: any) => concept.questions.general),
-                                codingPractices: existingVideo.concepts.flatMap((concept: any) => concept.questions.coding)
+                                questions: existingVideo.questions.general,
+                                codingPractices: existingVideo.questions.coding
                             },
                             message: 'Retrieved from database'
                         };
@@ -199,38 +199,8 @@ export const youtubeRouter = router({
                     cause: error
                 });
             }
-        })
+        }),
+    
 })
 
-// Router for generating follow-up questions based on user's previous answers
-export const followUpRouter = router({
-    generateFollowUpQuestions: procedure
-        .input(
-            z.object({
-                answers: z.array(z.string()).describe("The user's previous answers"),
-                originalQuestions: z.array(z.string()).describe("The original questions that were asked"),
-                followUpQuestions: z.array(z.string()).optional().describe("The follow-up questions generated based on the user's previous answers")
-            }).describe("Input for generating follow-up questions")
-        )
-        .mutation(async ({ input }) => {
-            try {
-                const { answers, originalQuestions, followUpQuestions } = input;
-                const aiOutput = await aiResponseForFollowUp(answers, originalQuestions, followUpQuestions);
-                return {
-                    success: true,
-                    output: aiOutput,
-                    message: 'Follow-up questions generated successfully'
-                }
-            } catch (error) {
-                console.error("generateFollowUpQuestions failed:", error);
-                throw new TRPCError({
-                    code: 'INTERNAL_SERVER_ERROR',
-                    message: 'Failed to generate follow-up questions. Please try again.',
-                    cause: error
-                });
-            }
-        })
-});
-
-export type followUpRouterType = typeof followUpRouter;
 export type youtubeRouterType = typeof youtubeRouter;

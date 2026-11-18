@@ -14,7 +14,6 @@ export const sessions = pgTable("sessions", {
     .references(() => users.id, {
       onDelete: "cascade",
     }),
-  answeredQuestions: jsonb("answered_questions").$type<string[]>().notNull().default([]),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 },
   (table) => [
@@ -22,26 +21,37 @@ export const sessions = pgTable("sessions", {
   ],
 );
 
+export const session_answers = pgTable("session_answers", {
+  id: varchar("id", { length: 255 }).primaryKey(),
+  sessionId: varchar("session_id", { length: 255 })
+    .notNull()
+    .references(() => sessions.id, {
+      onDelete: "cascade"
+    }),
+  phases: jsonb("phases").$type<object[]>().notNull().default([]),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+},
+  (table) => [
+    index("session_answer_id_index").on(table.sessionId)
+  ])
+
 export const gradebook = pgTable("gradebook", {
   id: varchar("id", { length: 255 }).primaryKey(),
-  userId: varchar("user_id", { length: 255 })
+  sessionId: varchar("user_id", { length: 255 })
     .notNull()
-    .references(() => users.id, {
+    .references(() => sessions.id, {
       onDelete: "cascade",
     }),
-  conceptId: varchar("concept_id", { length: 255 }).notNull(),
   score: text("score").notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 },
   (table) => [
-    index("gradebook_user_id_index").on(table.userId)
+    index("gradebook_sessions_id_index").on(table.sessionId)
   ]);
 
 export const videos = pgTable("videos", {
   videoId: varchar("video_id", { length: 255 }).primaryKey(),
-  // Concepts with id and name stored with related questions in JSONB format
-  concepts: jsonb("concepts").$type<{ id: string; name: string; questions: { general: { question: string; timestampSeconds: number }[]; coding: { task: string; code: string; lang: string; filename: string }[] } }[]>().notNull().default([]),
-
+  questions: jsonb("concepts").$type<{general: { question: string; timestampSeconds: number }[]; coding: { task: string; code: string; lang: string; filename: string }[]}>().notNull().default([]),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 

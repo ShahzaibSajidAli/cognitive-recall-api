@@ -132,22 +132,20 @@ const FollowUpQuestions = z.object({
 const TranscriptQuestions = z.object({
     title: z.string().describe("The title of the YouTube video"),
     language: z.string().describe("Language code of the output, e.g. 'en'"),
-    concepts: z.array(z.object({
-        name: z.string().describe("A key concept or topic covered in the video"),
-        id: z.string().describe("A unique identifier for the concept, e.g. a UUID"),
-        questions: z.object({
-            general: z.array(z.object({
-                question: z.string().describe("A clear question about the concept a learner should be able to answer after watching the video"),
-                timestampSeconds: z.number().describe("Second in the video where the answer is discussed; use the transcript's [Ns] markers"),
-            })).describe("Conceptual questions based on the concept"),
-            coding: z.array(z.object({
-                task: z.string().describe("A short practice task the learner should complete"),
-                code: z.string().describe("Starter or example code for the task"),
-                lang: z.string().describe("Syntax highlighter language id, e.g. 'typescript'"),
-                filename: z.string().describe("Label for the code block, e.g. 'app.ts'"),
-            })).describe("Coding practice exercises related to the video or Empty if no coding task needed"),
-        }),
-    })),
+    questions: z.object({
+        general: z.array(z.object({
+            question: z.string().describe("A clear question about the concept a learner should be able to answer after watching the video"),
+            timestampSeconds: z.number().describe("Second in the video where the answer is discussed; use the transcript's [Ns] markers"),
+        })).describe("Conceptual questions based on the concept"),
+        coding: z.array(z.object({
+            task: z.string().describe("A short practice task the learner should complete"),
+            code: z.string().describe("Starter or example code for the task"),
+            lang: z.string().describe("Syntax highlighter language id, e.g. 'typescript'"),
+            filename: z.string().describe("Label for the code block, e.g. 'app.ts'"),
+        })).describe("Coding practice exercises related to the video or Empty if no coding task needed"),
+    }),
+    isMastered: z.boolean().describe("Indicates if the learner has mastered concepts based on their answers"),
+    score: z.number().describe("A score indicating the quality of the user's answers, on a scale from 0 to 100"),
     educational: z.boolean().describe("Tells if the video is realted to coding and educational or not")
 });
 
