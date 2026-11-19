@@ -85,8 +85,8 @@ Task:
 3. Before finalizing, check each question against the transcript. Remove any you cannot support with a specific line.
 `.trim()
 
-const buildPromptForFollowUp = (opts: { answers: any[], originalQuestions: any[], followUpQuestions?: any[] }) => `
-You are a Socratic tutor that generates follow-up questions based on a learner's previous answers(${opts.answers.join(', ')}). OR Previous Follow up questions asked and their answers ${opts.followUpQuestions} if available.
+const buildPromptForFollowUp = (opts: { answers: any[], originalQuestions: any[], followUpQuestions?: string[] }) => `
+You are a Socratic tutor that generates follow-up questions based on a learner's previous answers (${opts.answers.join(', ')}). OR Previous Follow up questions asked and their answers: ${opts.followUpQuestions ? opts.followUpQuestions.join(', ') : 'None'} if available.
 If the learner's previous answers score less than 50, you must generate fewer questions and focus on the most important concepts.
 If the learner's previous answers score 50-90, you must generate more questions and cover a wider range of concepts.
 If the learner's previous answers score 90-100, you don't need to generate any follow-up questions.
@@ -148,21 +148,45 @@ const TranscriptQuestions = z.object({
     }),
     isMastered: z.boolean().describe("Indicates if the learner has mastered concepts based on their answers"),
     score: z.number().describe("A score indicating the quality of the user's answers, on a scale from 0 to 100"),
-    educational: z.boolean().describe("Tells if the video is realted to coding and educational or not")
+    educational: z.boolean().describe("Tells if the video is related to coding and educational or not")
 });
 
 // For Mock Testing Providing Mock JSON
 const mockTranscriptQuestionsData = {
     title: "Building Scalable tRPC Microservices in Docker",
     language: "en",
-    concepts: typescriptTranscriptQuestions,
+    questions: typescriptTranscriptQuestions,
     educational: true
 };
 
 export const aiResponseForTranscript = async (transcript: string, language: string) => {
     if (process.env.MOCK_AI === 'true') {
         await mockDelay(5000, 15000);
-        return mockTranscriptQuestionsData;
+        return {
+            questions: {
+                general: [
+                    {
+                        question: "What is tRPC and how does it help in building scalable microservices?",
+                        timestampSeconds: 45
+                    },
+                    {
+                        question: "How does Docker contribute to the scalability of microservices?",
+                        timestampSeconds: 120
+                    }
+                ],
+                coding: [
+                    {
+                        task: "Write a simple tRPC procedure for fetching user data.",
+                        code: "// TODO: Implement a tRPC procedure to fetch user data\nexport const getUser = t.procedure.query(async ({ ctx }) => {\n  // ...\n});",
+                        lang: "typescript",
+                        filename: "userRouter.ts"
+                    }
+                ]
+            },
+            isMastered: false,
+            score: 75,
+            // Optionally add more mock fields as needed for your tests
+        };
     }
     const maxAttempts = 3;
 
@@ -202,7 +226,7 @@ export const aiResponseForTranscript = async (transcript: string, language: stri
     }
 };
 
-export const aiResponseForFollowUp = async (answers: any[], originalQuestions: any[], followUpQuestions: string[] | undefined) => {
+export const aiResponseForFollowUp = async (answers: any[], originalQuestions: any[], followUpQuestions: string[]) => {
     if (process.env.MOCK_AI === 'true') {
         await mockDelay(5000, 15000);
         return mockTranscriptQuestionsData;
@@ -219,7 +243,7 @@ export const aiResponseForFollowUp = async (answers: any[], originalQuestions: a
                     schema: FollowUpQuestions
                 }),
                 system: SYSTEM_PROMPT_FOR_FOLLOW_UP,
-                prompt: buildPromptForFollowUp({ answers, originalQuestions }),
+                prompt: buildPromptForFollowUp({ answers, originalQuestions, followUpQuestions }),
                 temperature: 0.3,
                 maxRetries: 0,
                 providerOptions: {
