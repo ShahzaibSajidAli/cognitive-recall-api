@@ -201,14 +201,12 @@ export const youtubeRouter = router({
                             if (!aiOutput) {
                                 throw new Error('Failed to generate questions from transcript.');
                             }
-                            const questions = 'questions' in aiOutput
-                                ? aiOutput.questions
-                                : aiOutput.concepts.questions;
+
                             // Insert the AI output into the database
                             await ctx.db.insert(videos).values([
                                 {
                                     videoId: extractYoutubeVideoId(videoUrl) || 'unknown',
-                                    questions: questions as any
+                                    questions: aiOutput?.questions as any
                                 } as any
                             ])
 
