@@ -1,38 +1,47 @@
 import { initTRPC } from "@trpc/server";
 import "@fastify/cookie"
 import { type CreateFastifyContextOptions } from "@trpc/server/adapters/fastify";
-import { createAccessToken, verifyAccessToken, verifyRefreshToken, type AccessPayload, type RefreshPayload } from "./auth/auth.js";
+import { createAccessToken, verifyAccessToken, verifyRefreshToken, type AccessPayload } from "./auth/auth.js";
 import { refreshTokens } from "./db/drizzle/schema/schema.js";
 import { eq } from "drizzle-orm";
 import { db } from "./db/index.js";
-import * as crypto from 'crypto';
 
 
 const createContext = async ({ req, res }: CreateFastifyContextOptions) => {
-    
-     let userId: AccessPayload | null | string = await verifyAccessToken(req.cookies.access_token);
+
+    let userId: AccessPayload | null | string = await verifyAccessToken(req.cookies.access_token);
 
     if (!userId && req.cookies.refresh_token) {
         const refreshPayload = await verifyRefreshToken(req.cookies.refresh_token);
 
-        if(refreshPayload) {
+        if (refreshPayload) {
             const [storedToken] = await db.select().from(refreshTokens).where(eq(refreshTokens.id, refreshPayload.tokenId)) as any;
 
-            if(storedToken && storedToken.expiresAt > new Date()) {
-                const newAccessToken = await createAccessToken(refreshPayload.userId);
+            if (storedToken) {
+                // Check if expired
+                if (storedToken.expiresAt <= new Date()) {
+                    // 1. Delete the expired row from PostgreSQL
+                    await db.delete(refreshTokens).where(eq(refreshTokens.id, storedToken.id));
 
-                res.setCookie('access_token', newAccessToken, {
-                    httpOnly: true,
-                    secure: true,
-                    sameSite: 'lax',
-                    path: '/',
-                    maxAge: 60 * 15
-                })
+                    // 2. Clear the dead cookies from the browser
+                    res.clearCookie('access_token', { path: '/' });
+                    res.clearCookie('refresh_token', { path: '/' });
+                } else {
+                    // Valid token -> mint a new 15-min access_token!
+                    const newAccessToken = await createAccessToken(refreshPayload.userId);
+                    res.setCookie('access_token', newAccessToken, {
+                        httpOnly: true,
+                        secure: true,
+                        sameSite: 'lax',
+                        path: '/',
+                        maxAge: 60 * 15,
+                    });
+
+                    userId = refreshPayload.userId;
+                }
             }
         }
-        userId = refreshPayload!.userId;
     }
-
     return {
         req,
         res,
