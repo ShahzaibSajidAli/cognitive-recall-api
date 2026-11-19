@@ -1,0 +1,42 @@
+{
+  "type": "diff",
+  "version": "9",
+  "dialect": "postgres",
+  "id": "6851ebdc-8c50-47a6-bf32-40bd4e787c5f",
+  "prevIds": [
+    "aee6fab8-c7a6-4690-aca2-b07ca22cc1f3"
+  ],
+  "footprints": [
+    {
+      "statementType": "rename_index",
+      "statementTarget": [
+        "index",
+        "public",
+        "responses",
+        "sessions_user_id_index"
+      ],
+      "writes": [
+        "s|idx|public.sessions_user_id_index",
+        "n|idx|public.sessions_user_id_index",
+        "n|rel|public.sessions_user_id_index",
+        "s|idx|public.responses_user_id_index",
+        "n|idx|public.responses_user_id_index",
+        "n|rel|public.responses_user_id_index"
+      ],
+      "reads": [
+        "e|tbl|public.responses",
+        "n|sch|public",
+        "e|col|public.responses.user_id"
+      ]
+    }
+  ],
+  "deltas": [
+    {
+      "op": "rename",
+      "key": "indexes\u0000[\"public\",\"sessions_user_id_index\"]",
+      "set": {
+        "name": "responses_user_id_index"
+      }
+    }
+  ]
+}
