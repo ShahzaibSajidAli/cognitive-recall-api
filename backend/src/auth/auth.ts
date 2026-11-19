@@ -1,7 +1,8 @@
 import { SignJWT, jwtVerify } from "jose";
 import { type FastifyReply } from "fastify";
 import { refreshTokens } from "../db/drizzle/schema/schema.js";
-import { db } from "../db/index.js"
+import { db } from "../db/index.js";
+import * as crypto from "crypto";
 
 const ACCESS_KEY = new TextEncoder().encode(process.env.JWT_SECRET!);
 const REFRESH_KEY = new TextEncoder().encode(process.env.JWT_SECRET!);
@@ -77,9 +78,11 @@ export async function createSessionAndSetCookies(
     userId: string // Change to `string` if your users.id is a uuid
 ) {
     // 1. Save a new refresh token session in PostgreSQL
+    const tokenId = crypto.randomUUID;
     const [session] = await db
         .insert(refreshTokens)
         .values({
+            id: tokenId,
             userId: userId,
             expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days
         } as any)

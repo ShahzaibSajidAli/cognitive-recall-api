@@ -9,6 +9,7 @@ import { eq } from 'drizzle-orm';
 import { users, videos } from './db/drizzle/schema/schema.js';
 import { clearAuthCookies, createSessionAndSetCookies } from "./auth/auth.js";
 import { hash, verify, argon2id } from 'argon2';
+import * as crypto from "crypto";
 
 // For Mock Testing
 const rand = (min: number, max: number) =>
