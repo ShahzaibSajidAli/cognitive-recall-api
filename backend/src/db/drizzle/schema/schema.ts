@@ -19,7 +19,7 @@ export const refreshTokens = pgTable("refresh_tokens", {
   expiresAt: timestamp("expires_at"),
 },
   (table) => [
-    index("sessions_user_id_index").on(table.userId)
+    index("refresh_tokens_user_id_index").on(table.userId)
   ],
 );
 
@@ -37,23 +37,31 @@ export const responses = pgTable("responses", {
   ],
 );
 
+type Phase = {
+  // Define the properties of a phase object here
+  // For example:
+  name: string;
+  value: string;
+  // Add more fields as needed
+};
+
 export const response_answers = pgTable("response_answers", {
   id: uuid("id").defaultRandom().primaryKey(),
-  responseId: varchar("session_id", { length: 255 })
+  responseId: varchar("response_id", { length: 255 })
     .notNull()
     .references(() => responses.id, {
       onDelete: "cascade"
     }),
-  phases: jsonb("phases").$type<object[]>().notNull().default([]),
+  phases: jsonb("phases").$type<Phase[]>().notNull().default([]),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 },
   (table) => [
-    index("session_answer_id_index").on(table.responseId)
+    index("response_answer_id_index").on(table.responseId)
   ])
 
 export const gradebook = pgTable("gradebook", {
   id: uuid("id").defaultRandom().primaryKey(),
-  responseId: varchar("user_id", { length: 255 })
+  responseId: varchar("response_id", { length: 255 })
     .notNull()
     .references(() => responses.id, {
       onDelete: "cascade",
@@ -62,7 +70,7 @@ export const gradebook = pgTable("gradebook", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
 },
   (table) => [
-    index("gradebook_sessions_id_index").on(table.responseId)
+    index("gradebook_response_id_index").on(table.responseId)
   ]);
 
 export type VideoQuestions = {
