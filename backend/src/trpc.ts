@@ -55,7 +55,7 @@ const t = initTRPC.context<typeof createContext>().create();
 
 const isAuthed = t.middleware(({ ctx, next }) => {
     if (!ctx.userId) {
-        console.log("Access Token Expired. Renew It or Login Again.")
+        console.log("Access Token Expired or User Not Logged In. Renew It or Login Again.")
     }
 
     return next({
