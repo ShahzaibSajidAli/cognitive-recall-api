@@ -10,7 +10,10 @@
   },
   "dependencies": {
     "@ai-sdk/google": "^4.0.87",
+    "@fastify/cookie": "^11.1.5",
+    "argon2": "^0.45.2",
     "dotenv": "^18.0.5",
+    "jose": "^6.2.18",
     "path": "^0.12.7"
   }
 }

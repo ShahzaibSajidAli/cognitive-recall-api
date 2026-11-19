@@ -1,13 +1,14 @@
 import { z } from 'zod';
-import { router, procedure } from './trpc.js';
+import { router, publicProcedure, protectedProcedure } from './trpc.js';
 import { YoutubeTranscript, YoutubeTranscriptDisabledError } from 'youtube-transcript'
 import { aiResponseForTranscript, aiResponseForFollowUp } from './aiResponser.js';
 import { TRPCError } from '@trpc/server';
 import { typescriptTranscript } from './mockfiles/mockTranscript.js';
 import { proxiedFetch } from './adapters/proxyProvider.js';
-import { db } from './db/index.js';
 import { eq } from 'drizzle-orm';
-import { videos } from './db/drizzle/schema/schema.js';
+import { users, videos } from './db/drizzle/schema/schema.js';
+import { clearAuthCookies, createSessionAndSetCookies } from "./auth/auth.js";
+import { hash, verify, argon2id } from 'argon2';
 
 // For Mock Testing
 const rand = (min: number, max: number) =>
@@ -89,14 +90,57 @@ async function inspectInnerTubeMetadata(videoUrl: string) {
 }
 
 export const youtubeRouter = router({
-    getTranscript: procedure
+    signUp: publicProcedure
+        .input(
+            z.object({
+                username: z.string().min(5, { message: 'Username cannot be empty' }).trim(),
+                email: z.email().trim().toLowerCase(),
+                password: z.string().min(8)
+            })
+        ).mutation(async ({ ctx, input }) => {
+            const { username, email, password } = input;
+            const hashedPassword = await hash(password, { type: argon2id });
+
+            const [newUser] = await ctx.db.insert(users).values([{
+                username: username,
+                email: email,
+                password: hashedPassword
+            } as any])
+                .returning({ id: users.id, email: users.email });
+            createSessionAndSetCookies(ctx.res, newUser!.id)
+            return { success: true}
+        }),
+    login: publicProcedure
+        .input(
+            z.object({
+                email: z.email().trim().toLowerCase(),
+                password: z.string().min(8)
+            })).mutation(async ({ ctx, input }) => {
+                const { email, password } = input;
+                const [fetchUser] = await ctx.db.select().from(users).where(eq(users.email, email));
+
+                if (!fetchUser || !await verify(fetchUser.password, password)) {
+                    throw new TRPCError({
+                        code: 'UNAUTHORIZED', message: 'Invalid email or password'
+                    })
+                }
+
+                await createSessionAndSetCookies(ctx.res, fetchUser.id)
+                return { success: true }
+            }),
+    logout: protectedProcedure
+        .mutation(({ ctx }) => {
+            clearAuthCookies(ctx.res);
+            return { success: true }
+        }),
+    getTranscript: protectedProcedure
         .input(
             z.object({
                 videoUrl: z.string().min(1, { message: 'URL cannot be empty' }),
                 language: z.string()
             })
         )
-        .mutation(async ({ input }) => {
+        .mutation(async ({ ctx, input }) => {
             try {
                 const intervalSeconds = 60;
                 let currentBucket = -1;
@@ -124,7 +168,7 @@ export const youtubeRouter = router({
 
                 } else {
                     // Database Check: If the video already exists in the database, returns the stored questions and coding practices
-                    const [existingVideo] = await db.select().from(videos).where(eq(videos.videoId,
+                    const [existingVideo] = await ctx.db.select().from(videos).where(eq(videos.videoId,
                         (extractYoutubeVideoId(videoUrl) || 'unknown')
                     ));
                     console.log('Database check for existing video entry completed. Existing video found:', existingVideo);
@@ -161,7 +205,7 @@ export const youtubeRouter = router({
                                 ? aiOutput.questions
                                 : aiOutput.concepts.questions;
                             // Insert the AI output into the database
-                            await db.insert(videos).values([
+                            await ctx.db.insert(videos).values([
                                 {
                                     videoId: extractYoutubeVideoId(videoUrl) || 'unknown',
                                     questions: questions as any
@@ -206,7 +250,7 @@ export const youtubeRouter = router({
                 });
             }
         }),
-    
+
 })
 
 export type youtubeRouterType = typeof youtubeRouter;
