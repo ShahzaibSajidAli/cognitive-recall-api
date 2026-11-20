@@ -4,8 +4,8 @@ import { refreshTokens } from "../db/drizzle/schema/schema.js";
 import { db } from "../db/index.js";
 import * as crypto from "crypto";
 
-const ACCESS_KEY = new TextEncoder().encode(process.env.JWT_SECRET!);
-const REFRESH_KEY = new TextEncoder().encode(process.env.JWT_SECRET!);
+const ACCESS_KEY = new TextEncoder().encode(process.env.JWT_ACCESS_SECRET!);
+const REFRESH_KEY = new TextEncoder().encode(process.env.JWT_REFRESH_SECRET!);
 
 export interface AccessPayload {
     userId: string;
