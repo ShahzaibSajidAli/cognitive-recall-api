@@ -9,8 +9,7 @@ import { eq } from 'drizzle-orm';
 import { users, videos } from './db/drizzle/schema/schema.js';
 import { clearAuthCookies, createSessionAndSetCookies } from "./auth/auth.js";
 import { hash, verify, argon2id } from 'argon2';
-import * as crypto from "crypto";
-
+import { refreshTokens } from './db/drizzle/schema/schema.js';
 // For Mock Testing
 const rand = (min: number, max: number) =>
     min + Math.random() * (max - min);
@@ -109,7 +108,7 @@ export const youtubeRouter = router({
             } as any])
                 .returning({ id: users.id, email: users.email });
             await createSessionAndSetCookies(ctx.res, newUser!.id)
-            return { success: true}
+            return { success: true }
         }),
     login: publicProcedure
         .input(
@@ -120,17 +119,24 @@ export const youtubeRouter = router({
                 const { email, password } = input;
                 const [fetchUser] = await ctx.db.select().from(users).where(eq(users.email, email));
 
-                if (!fetchUser || !await verify(fetchUser.password, password)) {
+                if (!fetchUser) {
                     throw new TRPCError({
-                        code: 'UNAUTHORIZED', message: 'Invalid email or password'
+                        code: 'UNAUTHORIZED', message: 'Invalid Email'
                     })
                 }
 
+                if (!await verify(fetchUser.password, password)) {
+                    throw new TRPCError({
+                        code: 'UNAUTHORIZED', message: 'Invalid Password'
+                    })
+                }
                 await createSessionAndSetCookies(ctx.res, fetchUser.id)
                 return { success: true }
             }),
     logout: protectedProcedure
-        .mutation(({ ctx }) => {
+        .mutation(async ({ ctx }) => {
+            const storedToken = ctx.tokenId;
+            await ctx.db.delete(refreshTokens).where(eq(refreshTokens.id, storedToken!));
             clearAuthCookies(ctx.res);
             return { success: true }
         }),

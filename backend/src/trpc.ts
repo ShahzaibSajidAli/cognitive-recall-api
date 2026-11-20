@@ -10,6 +10,7 @@ import { db } from "./db/index.js";
 const createContext = async ({ req, res }: CreateFastifyContextOptions) => {
 
     let userId: AccessPayload | null | string = await verifyAccessToken(req.cookies.access_token);
+    let tokenId;
 
     if (!userId && req.cookies.refresh_token) {
         const refreshPayload = await verifyRefreshToken(req.cookies.refresh_token);
@@ -38,6 +39,7 @@ const createContext = async ({ req, res }: CreateFastifyContextOptions) => {
                     });
 
                     userId = refreshPayload.userId;
+                    tokenId = refreshPayload.tokenId;
                 }
             }
         }
@@ -46,7 +48,8 @@ const createContext = async ({ req, res }: CreateFastifyContextOptions) => {
         req,
         res,
         db,
-        userId
+        userId,
+        tokenId
     }
 };
 
