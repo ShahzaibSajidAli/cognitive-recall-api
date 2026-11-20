@@ -108,7 +108,7 @@ export const youtubeRouter = router({
                 password: hashedPassword
             } as any])
                 .returning({ id: users.id, email: users.email });
-            createSessionAndSetCookies(ctx.res, newUser!.id)
+            await createSessionAndSetCookies(ctx.res, newUser!.id)
             return { success: true}
         }),
     login: publicProcedure

@@ -1,4 +1,4 @@
-import { initTRPC } from "@trpc/server";
+import { initTRPC, TRPCError } from "@trpc/server";
 import "@fastify/cookie"
 import { type CreateFastifyContextOptions } from "@trpc/server/adapters/fastify";
 import { createAccessToken, verifyAccessToken, verifyRefreshToken, type AccessPayload } from "./auth/auth.js";
@@ -54,9 +54,7 @@ const createContext = async ({ req, res }: CreateFastifyContextOptions) => {
 const t = initTRPC.context<typeof createContext>().create();
 
 const isAuthed = t.middleware(({ ctx, next }) => {
-    if (!ctx.userId) {
-        console.log("Access Token Expired or User Not Logged In. Renew It or Login Again.")
-    }
+    if (!ctx.userId) throw new TRPCError({ code: "UNAUTHORIZED" });
 
     return next({
         ctx: {
