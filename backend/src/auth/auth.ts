@@ -8,12 +8,12 @@ const ACCESS_KEY = new TextEncoder().encode(process.env.JWT_SECRET!);
 const REFRESH_KEY = new TextEncoder().encode(process.env.JWT_SECRET!);
 
 export interface AccessPayload {
-  userId: string;
+    userId: string;
 }
 
 export interface RefreshPayload {
-  userId: string;
-  tokenId: string; // Maps to a record in your DB for revocation/rotation
+    userId: string;
+    tokenId: string; // Maps to a record in your DB for revocation/rotation
 }
 
 export const createAccessToken = async (userId: string): Promise<string> => {
@@ -31,7 +31,7 @@ export const createRefreshToken = async (userId: string, tokenId: string): Promi
 }
 
 export const verifyAccessToken = async (token?: string): Promise<AccessPayload | null> => {
-    if(!token) return null;
+    if (!token) return null;
     try {
         const { payload } = await jwtVerify(token, ACCESS_KEY);
 
@@ -43,11 +43,11 @@ export const verifyAccessToken = async (token?: string): Promise<AccessPayload |
 }
 
 export const verifyRefreshToken = async (token?: string): Promise<RefreshPayload | null> => {
-    if(!token) return null;
+    if (!token) return null;
     try {
         const { payload } = await jwtVerify(token, REFRESH_KEY);
 
-        return payload.userId as unknown 
+        return { userId: payload.userId as string, tokenId: payload.tokenId as string }
     } catch (err) {
 
         return null
@@ -78,7 +78,7 @@ export async function createSessionAndSetCookies(
     userId: string // Change to `string` if your users.id is a uuid
 ) {
     // 1. Save a new refresh token session in PostgreSQL
-    const tokenId = crypto.randomUUID;
+    const tokenId = crypto.randomUUID();
     const [session] = await db
         .insert(refreshTokens)
         .values({
@@ -97,6 +97,6 @@ export async function createSessionAndSetCookies(
 }
 
 export function clearAuthCookies(res: FastifyReply) {
-  res.clearCookie('access_token', { path: '/' });
-  res.clearCookie('refresh_token', { path: '/' });
+    res.clearCookie('access_token', { path: '/' });
+    res.clearCookie('refresh_token', { path: '/' });
 }
