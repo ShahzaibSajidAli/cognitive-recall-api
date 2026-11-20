@@ -47,7 +47,7 @@ export const verifyRefreshToken = async (token?: string): Promise<RefreshPayload
     try {
         const { payload } = await jwtVerify(token, REFRESH_KEY);
 
-        return payload.userId as unknown as RefreshPayload
+        return payload.userId as unknown 
     } catch (err) {
 
         return null
