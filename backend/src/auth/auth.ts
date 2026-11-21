@@ -3,6 +3,23 @@ import { type FastifyReply } from "fastify";
 import { refreshTokens } from "../db/drizzle/schema/schema.js";
 import { db } from "../db/index.js";
 import * as crypto from "crypto";
+import fs from "fs";
+import path from "path";
+import dotenv from "dotenv";
+
+const candidatePaths = [
+    path.resolve(process.cwd(), '.env'),
+    path.resolve(process.cwd(), '../.env'),
+]
+
+const localEnvPath = candidatePaths.find(p => fs.existsSync(p)) || candidatePaths[0];
+
+if (localEnvPath) {
+    dotenv.config({ path: localEnvPath });
+}
+else {
+    console.log("Production Environment Detected!. Using cloud injected variables.")
+}
 
 const ACCESS_KEY = new TextEncoder().encode(process.env.JWT_ACCESS_SECRET!);
 const REFRESH_KEY = new TextEncoder().encode(process.env.JWT_REFRESH_SECRET!);
@@ -74,7 +91,6 @@ export function setAuthCookies(res: FastifyReply, access: string, refresh: strin
 }
 
 export async function createSessionAndSetCookies(
-    res: FastifyReply,
     userId: string // Change to `string` if your users.id is a uuid
 ) {
     // 1. Save a new refresh token session in PostgreSQL
@@ -92,8 +108,7 @@ export async function createSessionAndSetCookies(
     const accessToken = await createAccessToken(String(userId));
     const refreshToken = await createRefreshToken(String(userId), session!.id);
 
-    // 3. Attach both HTTP-only cookies to the response
-    setAuthCookies(res, accessToken, refreshToken!);
+    return { accessToken, refreshToken };
 }
 
 export function clearAuthCookies(res: FastifyReply) {

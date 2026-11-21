@@ -2,7 +2,6 @@ import Fastify from "fastify";
 import fastifyCors from "@fastify/cors";
 import { fastifyTRPCPlugin } from "@trpc/server/adapters/fastify";
 import { youtubeRouter } from "./youtubeRouter.js";
-import { fastifyCookie } from "@fastify/cookie";
 
 const fastify = Fastify({
     logger: true
@@ -10,8 +9,6 @@ const fastify = Fastify({
 
 const startServer = async () => {
     try {
-        await fastify.register(fastifyCookie);
-
         await fastify.register(fastifyCors, {
             origin: process.env.ALLOWED_ORIGIN || '*',
             methods: ["GET", "POST", "OPTIONS"],
