@@ -4,6 +4,10 @@
 FROM node:22-alpine AS builder
 WORKDIR /app
 
+# Install build tools required for native modules like argon2
+RUN apk add --no-cache python3 make g++
+
+
 # 1. Copy package configurations first to leverage build caching
 COPY backend/package*.json ./backend/
 
