@@ -4,7 +4,7 @@
   "description": "This extension allows users to ask questions about YouTube videos using Socratic AI.",
   "version": "1.0",
   "permissions": [
-    "tabs"
+    "tabs", "storage"
   ],
   "icons": {
     "16": "icons/icon-16.png",
