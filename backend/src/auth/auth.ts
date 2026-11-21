@@ -9,7 +9,7 @@ import dotenv from "dotenv";
 
 const candidatePaths = [
     path.resolve(process.cwd(), '.env'),
-    path.resolve(process.cwd(), '../.env'),
+    path.resolve(process.cwd(), '../../../.env'),
 ]
 
 const localEnvPath = candidatePaths.find(p => fs.existsSync(p)) || candidatePaths[0];
