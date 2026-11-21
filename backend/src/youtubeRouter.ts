@@ -1,15 +1,16 @@
 import { z } from 'zod';
 import { router, publicProcedure, protectedProcedure } from './trpc.js';
-import { YoutubeTranscript, YoutubeTranscriptDisabledError } from 'youtube-transcript'
+import { YoutubeTranscript, YoutubeTranscriptDisabledError } from 'youtube-transcript';
 import { aiResponseForTranscript, aiResponseForFollowUp } from './aiResponser.js';
 import { TRPCError } from '@trpc/server';
 import { typescriptTranscript } from './mockfiles/mockTranscript.js';
 import { proxiedFetch } from './adapters/proxyProvider.js';
 import { eq } from 'drizzle-orm';
 import { users, videos } from './db/drizzle/schema/schema.js';
-import { clearAuthCookies, createSessionAndSetCookies } from "./auth/auth.js";
+import { createSessionAndSetCookies } from "./auth/auth.js";
 import { hash, verify, argon2id } from 'argon2';
 import { refreshTokens } from './db/drizzle/schema/schema.js';
+import { verifyRefreshToken } from './auth/auth.js';
 // For Mock Testing
 const rand = (min: number, max: number) =>
     min + Math.random() * (max - min);
@@ -107,8 +108,12 @@ export const youtubeRouter = router({
                 password: hashedPassword
             } as any])
                 .returning({ id: users.id, email: users.email });
-            await createSessionAndSetCookies(ctx.res, newUser!.id)
-            return { success: true }
+            const { accessToken, refreshToken } = await createSessionAndSetCookies(newUser!.id)
+            return {
+                success: true,
+                accessToken: accessToken,
+                refreshToken: refreshToken
+            }
         }),
     login: publicProcedure
         .input(
@@ -121,25 +126,81 @@ export const youtubeRouter = router({
 
                 if (!fetchUser) {
                     throw new TRPCError({
-                        code: 'UNAUTHORIZED', message: 'Invalid Email'
+                        code: 'UNAUTHORIZED', message: 'Invalid Email or Password'
                     })
                 }
 
                 if (!await verify(fetchUser.password, password)) {
                     throw new TRPCError({
-                        code: 'UNAUTHORIZED', message: 'Invalid Password'
+                        code: 'UNAUTHORIZED', message: 'Invalid Email or Password'
                     })
                 }
-                await createSessionAndSetCookies(ctx.res, fetchUser.id)
-                return { success: true }
+                const { accessToken, refreshToken } = await createSessionAndSetCookies(fetchUser.id)
+                return { success: true, accessToken: accessToken, refreshToken: refreshToken }
             }),
     logout: protectedProcedure
-        .mutation(async ({ ctx }) => {
-            const storedToken = ctx.tokenId;
-            await ctx.db.delete(refreshTokens).where(eq(refreshTokens.id, storedToken!));
-            clearAuthCookies(ctx.res);
+        .input(
+            z.object({
+                refreshToken: z.string(),
+            })
+        )
+        .mutation(async ({ ctx, input }) => {
+            const { refreshToken } = input;
+            const payload = await verifyRefreshToken(refreshToken);
+
+            if (!payload) {
+                throw new TRPCError({
+                    code: 'UNAUTHORIZED',
+                    message: 'Invalid or expired refresh token'
+                })
+            }
+            if (refreshToken) {
+                await ctx.db.delete(refreshTokens).where(eq(refreshTokens.id, payload.tokenId));
+            }
+
             return { success: true }
         }),
+    refresh: publicProcedure.input(
+        z.object({
+            refreshTokens: z.string(),
+        })
+    ).mutation(async ({ ctx, input }) => {
+        const payload = await verifyRefreshToken(input.refreshTokens);
+
+        if (!payload) {
+            throw new TRPCError({
+                code: 'UNAUTHORIZED',
+                message: 'Invalid or expired refresh token'
+            });
+        }
+
+        const [session] = await ctx.db
+            .select()
+            .from(refreshTokens)
+            .where(eq(refreshTokens.id, payload.tokenId));
+
+        if (
+            !session ||
+            session.userId !== payload.userId ||
+            session.expiresAt <= new Date()
+        ) {
+            throw new TRPCError({
+                code: 'UNAUTHORIZED',
+                message: 'Refresh session is invalid or expired'
+            });
+        }
+
+        // Rotate the refresh session: revoke the old one before creating a replacement.
+        await ctx.db.delete(refreshTokens).where(eq(refreshTokens.id, payload.tokenId));
+
+        const { accessToken, refreshToken } = await createSessionAndSetCookies(payload.userId);
+
+        return {
+            success: true,
+            accessToken,
+            refreshToken
+        };
+    }),
     getTranscript: protectedProcedure
         .input(
             z.object({
