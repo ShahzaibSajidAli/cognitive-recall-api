@@ -9,9 +9,11 @@ RUN apk add --no-cache python3 make g++
 
 
 # 1. Copy package configurations first to leverage build caching
+COPY package*.json ./
 COPY backend/package*.json ./backend/
 
 # Install all dependencies (including devDependencies like TypeScript) inside the backend folder
+RUN npm ci
 RUN npm ci --prefix backend
 
 # 2. Copy everything from the root at once

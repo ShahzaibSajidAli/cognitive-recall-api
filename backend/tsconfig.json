@@ -9,7 +9,6 @@
     // See also https://aka.ms/tsconfig/module
     "module": "node16",
     "target": "esnext",
-    "types": [],
     "moduleResolution": "nodenext",
     "esModuleInterop": true,
     // For nodejs:
