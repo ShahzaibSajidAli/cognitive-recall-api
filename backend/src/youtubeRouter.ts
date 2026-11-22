@@ -53,10 +53,14 @@ async function inspectInnerTubeMetadata(videoUrl: string) {
                 },
                 videoId
             })
-        });
-
+        }); 
+        if(!response) {
+            throw new TRPCError({
+                code: 'NOT_FOUND',
+                message: "Captions Track Not Found."
+            })
+        }
         const body: unknown = await response.json();
-        console.log(body);
         const playerResponse = body && typeof body === 'object'
             ? body as {
                 playabilityStatus?: { status?: string };
