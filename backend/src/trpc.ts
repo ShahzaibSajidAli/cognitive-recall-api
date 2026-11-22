@@ -7,7 +7,7 @@ import { db } from "./db/index.js";
 
 export const createContext = async ({ req, res }: CreateFastifyContextOptions) => {
     const header = req.headers.authorization;
-    const token = header?.startsWith("Bearer ") ? header.slice(7) : req.cookies.auth_token;
+    const token = header?.startsWith("Bearer ") ? header.slice(7) : undefined;
 
     let userId: AccessPayload | null | string = await verifyAccessToken(token);
 
