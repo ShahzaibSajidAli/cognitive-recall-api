@@ -2,6 +2,7 @@ import Fastify from "fastify";
 import fastifyCors from "@fastify/cors";
 import { fastifyTRPCPlugin } from "@trpc/server/adapters/fastify";
 import { youtubeRouter } from "./youtubeRouter.js";
+import { createContext } from "./trpc.js";
 
 const fastify = Fastify({
     logger: true
@@ -17,9 +18,9 @@ const startServer = async () => {
 
         await fastify.register(fastifyTRPCPlugin, {
             prefix: '/trpc',
-            trpcOptions: { router: youtubeRouter }
+            trpcOptions: { router: youtubeRouter, createContext }
         });
-        
+
         await fastify.listen({ port: 3000, host: '0.0.0.0' });
         console.log('Server is running on http://localhost:3000');
     }

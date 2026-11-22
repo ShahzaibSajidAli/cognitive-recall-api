@@ -5,7 +5,7 @@ import { aiResponseForTranscript, aiResponseForFollowUp } from './aiResponser.js
 import { TRPCError } from '@trpc/server';
 import { typescriptTranscript } from './mockfiles/mockTranscript.js';
 import { proxiedFetch } from './adapters/proxyProvider.js';
-import { eq } from 'drizzle-orm';
+import { eq, and } from 'drizzle-orm';
 import { users, videos } from './db/drizzle/schema/schema.js';
 import { createSessionAndSetCookies } from "./auth/auth.js";
 import { hash, verify, argon2id } from 'argon2';
@@ -138,7 +138,7 @@ export const youtubeRouter = router({
                 const { accessToken, refreshToken } = await createSessionAndSetCookies(fetchUser.id)
                 return { success: true, accessToken: accessToken, refreshToken: refreshToken }
             }),
-    logout: protectedProcedure
+    logout: publicProcedure
         .input(
             z.object({
                 refreshToken: z.string(),
@@ -148,14 +148,10 @@ export const youtubeRouter = router({
             const { refreshToken } = input;
             const payload = await verifyRefreshToken(refreshToken);
 
-            if (!payload) {
-                throw new TRPCError({
-                    code: 'UNAUTHORIZED',
-                    message: 'Invalid or expired refresh token'
-                })
-            }
-            if (refreshToken) {
-                await ctx.db.delete(refreshTokens).where(eq(refreshTokens.id, payload.tokenId));
+            if (payload) {
+
+                await ctx.db.delete(refreshTokens).where(and(eq(refreshTokens.id, payload.tokenId),
+                    eq(refreshTokens.userId, payload.userId)))
             }
 
             return { success: true }
