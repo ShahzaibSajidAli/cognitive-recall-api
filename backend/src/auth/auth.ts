@@ -24,10 +24,6 @@ else {
 const ACCESS_KEY = new TextEncoder().encode(process.env.JWT_ACCESS_SECRET!);
 const REFRESH_KEY = new TextEncoder().encode(process.env.JWT_REFRESH_SECRET!);
 
-export interface AccessPayload {
-    userId: string;
-}
-
 export interface RefreshPayload {
     userId: string;
     tokenId: string; // Maps to a record in your DB for revocation/rotation
@@ -47,12 +43,12 @@ export const createRefreshToken = async (userId: string, tokenId: string): Promi
         .sign(REFRESH_KEY)
 }
 
-export const verifyAccessToken = async (token?: string): Promise<AccessPayload | null> => {
+export const verifyAccessToken = async (token?: string): Promise<string | null> => {
     if (!token) return null;
     try {
         const { payload } = await jwtVerify(token, ACCESS_KEY);
 
-        return payload.userId as AccessPayload
+        return payload.userId as string
     } catch (err) {
 
         return null

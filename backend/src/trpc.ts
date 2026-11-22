@@ -9,7 +9,7 @@ export const createContext = async ({ req, res }: CreateFastifyContextOptions) =
     const header = req.headers.authorization;
     const token = header?.startsWith("Bearer ") ? header.slice(7) : undefined;
 
-    let userId: AccessPayload | null | string = await verifyAccessToken(token);
+    let userId: string | null = await verifyAccessToken(token);
 
     return {
         req,
