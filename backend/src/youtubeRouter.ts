@@ -54,12 +54,6 @@ async function inspectInnerTubeMetadata(videoUrl: string) {
                 videoId
             })
         }); 
-        if(!response) {
-            throw new TRPCError({
-                code: 'NOT_FOUND',
-                message: "Captions Track Not Found."
-            })
-        }
         const body: unknown = await response.json();
         const playerResponse = body && typeof body === 'object'
             ? body as {
@@ -286,6 +280,12 @@ export const youtubeRouter = router({
                                 message: innerTubeRequest!.languageCode
                             }
                         }
+                        else {
+                            throw new TRPCError({
+                                code: 'NOT_FOUND',
+                                message: 'This video has no captions available.'
+                            });
+                        }
                     }
                     else {
                         // If the video already exists in the database, return the stored questions and coding practices
@@ -305,6 +305,7 @@ export const youtubeRouter = router({
                 }
             }
             catch (error) {
+                if (error instanceof TRPCError) throw error;
                 console.error("getTranscript failed:", error);
                 const message = error instanceof YoutubeTranscriptDisabledError
                     ? 'YouTube reports that transcripts are disabled or unavailable for this video.'
