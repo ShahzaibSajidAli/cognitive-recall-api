@@ -14,7 +14,11 @@ const fastify = Fastify({
 })
 
 const refreshTokenCleanupInterval = setInterval(async () => {
-    await db.delete(refreshTokens).where(lt(refreshTokens.expiresAt, new Date()));
+    try {
+        await db.delete(refreshTokens).where(lt(refreshTokens.expiresAt, new Date()));
+    } catch (error) {
+        fastify.log.error({ err: error }, 'Failed to clean up expired refresh tokens');
+    }
 }, 60 * 60 * 1000);
 refreshTokenCleanupInterval.unref();
 
