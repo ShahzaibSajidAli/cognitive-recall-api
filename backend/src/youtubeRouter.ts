@@ -12,7 +12,7 @@ import { hash, verify, argon2id } from 'argon2';
 import { refreshTokens } from './db/drizzle/schema/schema.js';
 import { verifyRefreshToken } from './auth/auth.js';
 import { config } from './config.js';
-import { languageSchema } from '../../shared/languages.js';
+import { SUPPORTED_LANGUAGES } from '../../shared/languages.js';
 // For Mock Testing
 const rand = (min: number, max: number) =>
     min + Math.random() * (max - min);
@@ -240,7 +240,7 @@ export const youtubeRouter = router({
         .input(
             z.object({
                 videoUrl: z.string().min(1, { message: 'URL cannot be empty' }),
-                language: languageSchema
+                language: z.enum(SUPPORTED_LANGUAGES) 
             })
         )
         .mutation(async ({ ctx, input }) => {
