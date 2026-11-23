@@ -1,5 +1,6 @@
 import Fastify from "fastify";
 import fastifyCors from "@fastify/cors";
+import fastifyRateLimit from "@fastify/rate-limit";
 import { fastifyTRPCPlugin } from "@trpc/server/adapters/fastify";
 import { youtubeRouter } from "./youtubeRouter.js";
 import { createContext } from "./trpc.js";
@@ -14,6 +15,29 @@ const startServer = async () => {
             origin: process.env.ALLOWED_ORIGIN || '*',
             methods: ["GET", "POST", "OPTIONS"],
             allowedHeaders: ["Content-Type", "Authorization"]
+        });
+
+        await fastify.register(fastifyRateLimit, {
+            global: true,
+            max: 100,
+            timeWindow: '1 minute'
+        });
+
+        const authRateLimit = fastify.createRateLimit({
+            max: 5,
+            timeWindow: '1 minute',
+            keyGenerator: (request) => request.ip
+        });
+
+        fastify.addHook('preHandler', async (request, reply) => {
+            if (/\/trpc\/(login|signUp)(?:[/?]|$)/.test(request.url)) {
+                const result = await authRateLimit(request);
+                if (!result.isAllowed) {
+                    await reply.code(429).send({
+                        error: 'Too Many Requests'
+                    });
+                }
+            }
         });
 
         await fastify.register(fastifyTRPCPlugin, {
