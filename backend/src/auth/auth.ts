@@ -1,5 +1,4 @@
 import { SignJWT, jwtVerify } from "jose";
-import { type FastifyReply } from "fastify";
 import { refreshTokens } from "../db/drizzle/schema/schema.js";
 import { db } from "../db/index.js";
 import * as crypto from "crypto";
@@ -46,7 +45,7 @@ export const createRefreshToken = async (userId: string, tokenId: string): Promi
 export const verifyAccessToken = async (token?: string): Promise<string | null> => {
     if (!token) return null;
     try {
-        const { payload } = await jwtVerify(token, ACCESS_KEY);
+        const { payload } = await jwtVerify(token, ACCESS_KEY, { algorithms: ['HS256'] });
 
         return payload.userId as string
     } catch (err) {
@@ -58,7 +57,7 @@ export const verifyAccessToken = async (token?: string): Promise<string | null> 
 export const verifyRefreshToken = async (token?: string): Promise<RefreshPayload | null> => {
     if (!token) return null;
     try {
-        const { payload } = await jwtVerify(token, REFRESH_KEY);
+        const { payload } = await jwtVerify(token, REFRESH_KEY, { algorithms: ['HS256'] });
 
         return { userId: payload.userId as string, tokenId: payload.tokenId as string }
     } catch (err) {
@@ -67,26 +66,7 @@ export const verifyRefreshToken = async (token?: string): Promise<RefreshPayload
     }
 }
 
-export function setAuthCookies(res: FastifyReply, access: string, refresh: string) {
-
-    res.setCookie('access_token', access, {
-        httpOnly: true,
-        secure: true,
-        sameSite: 'lax',
-        path: '/',
-        maxAge: 60 * 15, // 15 minutes
-    });
-
-    res.setCookie('refresh_token', refresh, {
-        httpOnly: true,
-        secure: true,
-        sameSite: 'lax',
-        path: '/',
-        maxAge: 60 * 60 * 24 * 7, // 7 days
-    });
-}
-
-export async function createSessionAndSetCookies(
+export async function createSession(
     userId: string // Change to `string` if your users.id is a uuid
 ) {
     // 1. Save a new refresh token session in PostgreSQL
@@ -97,7 +77,7 @@ export async function createSessionAndSetCookies(
             id: tokenId,
             userId: userId,
             expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days
-        } as any)
+        })
         .returning({ id: refreshTokens.id });
 
     // 2. Sign both JWTs
@@ -105,9 +85,4 @@ export async function createSessionAndSetCookies(
     const refreshToken = await createRefreshToken(String(userId), session!.id);
 
     return { accessToken, refreshToken };
-}
-
-export function clearAuthCookies(res: FastifyReply) {
-    res.clearCookie('access_token', { path: '/' });
-    res.clearCookie('refresh_token', { path: '/' });
 }

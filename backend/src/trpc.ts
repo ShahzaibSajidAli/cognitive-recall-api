@@ -1,5 +1,4 @@
 import { initTRPC, TRPCError } from "@trpc/server";
-import "@fastify/cookie"
 import { type CreateFastifyContextOptions } from "@trpc/server/adapters/fastify";
 import { verifyAccessToken } from "./auth/auth.js";
 import { db } from "./db/index.js";
