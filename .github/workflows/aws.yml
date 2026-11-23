@@ -9,7 +9,20 @@ on:
       - '*.md'
 
 jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Install backend dependencies
+        run: npm ci --prefix backend
+
+      - name: Type-check backend
+        run: cd backend && npx tsc --noEmit
+
   deploy:
+    needs: check
     runs-on: ubuntu-latest
     environment: production
 
