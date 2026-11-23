@@ -1,8 +1,7 @@
-import { createTRPCProxyClient, httpBatchLink } from "@trpc/client";
+import { createTRPCProxyClient, httpBatchLink, type inferRouterProxyClient } from "@trpc/client";
 import type { youtubeRouterType } from "../../backend/src/youtubeRouter";
-import { ref } from "node:process";
 
-export const trpcClient = createTRPCProxyClient<youtubeRouterType>({
+export const trpcClient: inferRouterProxyClient<youtubeRouterType> = createTRPCProxyClient<youtubeRouterType>({
     links: [
         httpBatchLink({
             url: import.meta.env.PUBLIC_IP,
@@ -22,6 +21,20 @@ export const trpcClient = createTRPCProxyClient<youtubeRouterType>({
         })
     ]
 });
+
+function isUnauthorizedError(error: unknown): boolean {
+    if (typeof error !== 'object' || error === null) return false;
+
+    if ('data' in error) {
+        const data = error.data;
+        if (typeof data === 'object' && data !== null && 'code' in data && data.code === 'UNAUTHORIZED') {
+            return true;
+        }
+    }
+
+    return 'message' in error && typeof error.message === 'string'
+        && error.message.toUpperCase().includes('UNAUTHORIZED');
+}
 
 async function handleFetch(sendResponse: (response: any) => void, lang: string) {
     try {
@@ -63,9 +76,57 @@ async function handleFetch(sendResponse: (response: any) => void, lang: string) 
             success: true, output: response!.output, message: response!.message
         });
     }
-    catch (error: any) {
+    catch (error: unknown) {
+        if (isUnauthorizedError(error)) {
+            try {
+                const { refreshToken } = await chrome.storage.local.get("refreshToken") as { refreshToken?: string };
+                if (!refreshToken) {
+                    await chrome.storage.local.remove(["accessToken", "refreshToken"]);
+                    sendResponse({ success: false, error: 'Please log in again.' });
+                    return;
+                }
+
+                const result = await trpcClient.refresh.mutate({ refreshTokens: refreshToken });
+                await chrome.storage.local.set({
+                    accessToken: result.accessToken,
+                    refreshToken: result.refreshToken
+                });
+
+                const [tab] = await chrome.tabs.query({
+                    active: true,
+                    currentWindow: true
+                });
+                if (!tab?.url) {
+                    sendResponse({ success: false, error: 'No active tab found or tab has no URL.' });
+                    return;
+                }
+
+                const retryResponse = await trpcClient.getTranscript.mutate({
+                    videoUrl: tab.url,
+                    language: lang
+                });
+                sendResponse({
+                    success: true,
+                    output: retryResponse.output,
+                    message: retryResponse.message
+                });
+                return;
+            } catch (refreshError) {
+                await chrome.storage.local.remove(["accessToken", "refreshToken"]);
+                sendResponse({
+                    success: false,
+                    error: 'Please log in again.',
+                    cause: refreshError
+                });
+                return;
+            }
+        }
+
         console.error('Fatal failure inside asynchronous execution path:', error);
-        sendResponse({ success: false, error: error.message || 'Unknown network error occurred.' });
+        sendResponse({
+            success: false,
+            error: error instanceof Error ? error.message : 'Unknown network error occurred.'
+        });
     }
 }
 
@@ -111,10 +172,13 @@ async function handleAuthentication(sendResponse: (response: any) => void, actio
             const { refreshToken } = await chrome.storage.local.get("refreshToken") as {
                 refreshToken?: string;
             };
-            if (refreshToken) {
-                await trpcClient.logout.mutate({ refreshToken});
+            try {
+                if (refreshToken) {
+                    await trpcClient.logout.mutate({ refreshToken });
+                }
+            } finally {
+                await chrome.storage.local.remove(["accessToken", "refreshToken"]);
             }
-            await chrome.storage.local.remove(["accessToken", "refreshToken"]);
             sendResponse({ success: true });
             return;
         }
