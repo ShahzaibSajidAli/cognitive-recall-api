@@ -230,8 +230,9 @@ export const youtubeRouter = router({
 
                 } else {
                     // Database Check: If the video already exists in the database, returns the stored questions and coding practices
-                    const [existingVideo] = await ctx.db.select().from(videos).where(eq(videos.videoId,
-                        (extractYoutubeVideoId(videoUrl) || 'unknown')
+                    const [existingVideo] = await ctx.db.select().from(videos).where(and(
+                        eq(videos.videoId, extractYoutubeVideoId(videoUrl) || 'unknown'),
+                        eq(videos.language, language)
                     ));
                     console.log('Database check for existing video entry completed. Existing video found:', existingVideo);
 
@@ -268,6 +269,7 @@ export const youtubeRouter = router({
                             await ctx.db.insert(videos).values([
                                 {
                                     videoId: extractYoutubeVideoId(videoUrl) || 'unknown',
+                                    language,
                                     questions: aiOutput?.questions as any
                                 } as any
                             ])

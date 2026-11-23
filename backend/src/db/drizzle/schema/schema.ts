@@ -1,5 +1,5 @@
 import { createInsertSchema, createSelectSchema } from "drizzle-orm/zod";
-import { jsonb, pgTable, text, timestamp, varchar, index, uuid } from "drizzle-orm/pg-core";
+import { jsonb, pgTable, text, timestamp, varchar, index, uuid, primaryKey } from "drizzle-orm/pg-core";
 
 export const users = pgTable("users", {
   id: uuid("id").defaultRandom().primaryKey(),
@@ -87,10 +87,13 @@ export type VideoQuestions = {
 };
 
 export const videos = pgTable("videos", {
-  videoId: varchar("video_id", { length: 255 }).primaryKey(),
+  videoId: varchar("video_id", { length: 255 }).notNull(),
+  language: varchar("language", { length: 255 }).notNull(),
   questions: jsonb("questions").$type<VideoQuestions>().notNull().default({ general: [], coding: [] }),
   createdAt: timestamp("created_at").defaultNow().notNull(),
-});
+}, (table) => [
+  primaryKey({ columns: [table.videoId, table.language] }),
+]);
 
 export const insertVideoSchema = createInsertSchema(videos);
 export const selectVideoSchema = createSelectSchema(videos);

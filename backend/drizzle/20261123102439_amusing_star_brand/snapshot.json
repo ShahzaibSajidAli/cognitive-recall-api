@@ -1,0 +1,78 @@
+{
+  "type": "diff",
+  "version": "9",
+  "dialect": "postgres",
+  "id": "a3efbb44-bfa3-49ff-9386-54e0437ee9b5",
+  "prevIds": [
+    "6851ebdc-8c50-47a6-bf32-40bd4e787c5f"
+  ],
+  "footprints": [
+    {
+      "statementType": "add_column",
+      "statementTarget": [
+        "column",
+        "public",
+        "videos",
+        "language"
+      ],
+      "writes": [
+        "s|col|public.videos.language",
+        "n|col|public.videos.language",
+        "e|col|public.videos.language"
+      ],
+      "reads": [
+        "n|tbl|public.videos",
+        "n|sch|public"
+      ]
+    },
+    {
+      "statementType": "alter_pk",
+      "statementTarget": [
+        "table",
+        "public",
+        "videos"
+      ],
+      "writes": [
+        "s|pk|public.videos"
+      ],
+      "reads": [
+        "n|tbl|public.videos",
+        "n|sch|public",
+        "n|col|public.videos.video_id",
+        "n|col|public.videos.language"
+      ],
+      "sharedWrites": [
+        "e|uniqueness|public.videos.video_id"
+      ],
+      "sqlHash": "cb8116502eb870b4"
+    }
+  ],
+  "deltas": [
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "videos",
+        "name": "language",
+        "type": "varchar(255)",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "alter",
+      "key": "pks\u0000[\"public\",\"videos\",\"videos_pkey\"]",
+      "set": {
+        "columns": [
+          "video_id",
+          "language"
+        ]
+      }
+    }
+  ]
+}
