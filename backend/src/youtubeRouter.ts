@@ -205,8 +205,15 @@ export const youtubeRouter = router({
             .from(refreshTokens)
             .where(eq(refreshTokens.id, payload.tokenId));
 
+        if (!session) {
+            await ctx.db.delete(refreshTokens).where(eq(refreshTokens.userId, payload.userId));
+            throw new TRPCError({
+                code: 'UNAUTHORIZED',
+                message: 'Refresh session is invalid or expired'
+            });
+        }
+
         if (
-            !session ||
             session.userId !== payload.userId ||
             session.expiresAt <= new Date()
         ) {
