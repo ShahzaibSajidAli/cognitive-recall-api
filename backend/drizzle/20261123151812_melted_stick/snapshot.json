@@ -1,0 +1,47 @@
+{
+  "type": "diff",
+  "version": "9",
+  "dialect": "postgres",
+  "id": "f8a8e816-d950-4723-babb-4e7a1a7e60a3",
+  "prevIds": [
+    "a3efbb44-bfa3-49ff-9386-54e0437ee9b5"
+  ],
+  "footprints": [
+    {
+      "statementType": "add_column",
+      "statementTarget": [
+        "column",
+        "public",
+        "videos",
+        "educational"
+      ],
+      "writes": [
+        "s|col|public.videos.educational",
+        "n|col|public.videos.educational",
+        "e|col|public.videos.educational"
+      ],
+      "reads": [
+        "n|tbl|public.videos",
+        "n|sch|public"
+      ]
+    }
+  ],
+  "deltas": [
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "videos",
+        "name": "educational",
+        "type": "boolean",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": "true",
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    }
+  ]
+}

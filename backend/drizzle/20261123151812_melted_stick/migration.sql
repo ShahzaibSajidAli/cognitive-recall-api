@@ -1,0 +1,1 @@
+ALTER TABLE "videos" ADD COLUMN "educational" boolean DEFAULT true NOT NULL;

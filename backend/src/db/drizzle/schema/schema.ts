@@ -1,5 +1,5 @@
 import { createInsertSchema, createSelectSchema } from "drizzle-orm/zod";
-import { jsonb, pgTable, text, timestamp, varchar, index, uuid, primaryKey } from "drizzle-orm/pg-core";
+import { jsonb, pgTable, text, timestamp, varchar, index, uuid, primaryKey, boolean } from "drizzle-orm/pg-core";
 
 export const users = pgTable("users", {
   id: uuid("id").defaultRandom().primaryKey(),
@@ -94,6 +94,7 @@ export type TranscriptOutput = {
 export const videos = pgTable("videos", {
   videoId: varchar("video_id", { length: 255 }).notNull(),
   language: varchar("language", { length: 255 }).notNull(),
+  educational: boolean("educational").notNull().default(true),
   questions: jsonb("questions").$type<VideoQuestions>().notNull().default({ general: [], coding: [] }),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 }, (table) => [

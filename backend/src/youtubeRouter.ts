@@ -310,13 +310,13 @@ export const youtubeRouter = router({
                             }
 
                             // Insert the AI output into the database
-                            await ctx.db.insert(videos).values([
-                                {
-                                    videoId: extractYoutubeVideoId(videoUrl) || 'unknown',
-                                    language,
-                                    questions: aiOutput?.questions as any
-                                } as any
-                            ])
+                            const videoValues: typeof videos.$inferInsert = {
+                                videoId: extractYoutubeVideoId(videoUrl) || 'unknown',
+                                language,
+                                educational: !('educational' in aiOutput) || aiOutput.educational,
+                                questions: aiOutput.questions
+                            };
+                            await ctx.db.insert(videos).values([videoValues])
 
                             return {
                                 success: true,
@@ -338,7 +338,7 @@ export const youtubeRouter = router({
                         // If the video already exists in the database, return the stored questions and coding practices
                         const response = {
                             success: true,
-                            output: buildTranscriptOutput(existingVideo.questions, true),
+                            output: buildTranscriptOutput(existingVideo.questions, existingVideo.educational),
                             message: 'Retrieved from database'
                         };
 
