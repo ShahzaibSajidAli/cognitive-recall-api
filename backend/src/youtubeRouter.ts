@@ -250,7 +250,6 @@ export const youtubeRouter = router({
                         eq(videos.videoId, extractYoutubeVideoId(videoUrl) || 'unknown'),
                         eq(videos.language, language)
                     ));
-                    console.log('Database check for existing video entry completed. Existing video found:', existingVideo);
 
                     if (!existingVideo) {
                         const innerTubeRequest = await inspectInnerTubeMetadata(videoUrl);
@@ -263,7 +262,6 @@ export const youtubeRouter = router({
                                 fetch: proxiedFetch,
                                 lang: innerTubeRequest.languageCode
                             });
-                            console.log(innerTubeRequest.languageCode)
 
                             const transcriptText = transcriptData.reduce((acc, item) => {
                                 const seconds = Math.floor(item.offset / 1000);
@@ -290,8 +288,6 @@ export const youtubeRouter = router({
                                 } as any
                             ])
 
-                            console.log('New video entry added to the database.');
-                            console.log('AI output generated and returned:', aiOutput);
                             return {
                                 success: true,
                                 output: buildTranscriptOutput(
@@ -316,15 +312,13 @@ export const youtubeRouter = router({
                             message: 'Retrieved from database'
                         };
 
-                        console.log('Video already exists in the database. Returning stored questions and coding practices. Questions:', response.output.questions.general, 'Coding Practices:', response.output.questions.coding
-                        );
                         return response;
                     }
                 }
             }
             catch (error) {
                 if (error instanceof TRPCError) throw error;
-                console.error("getTranscript failed:", error);
+                ctx.req.log.error({ err: error }, "getTranscript failed");
                 const message = error instanceof YoutubeTranscriptDisabledError
                     ? 'YouTube reports that transcripts are disabled or unavailable for this video.'
                     : 'Failed to fetch transcript or generate questions. Please check the proxy configuration and try again.';
