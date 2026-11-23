@@ -22,6 +22,36 @@ export const trpcClient: inferRouterProxyClient<youtubeRouterType> = createTRPCP
     ]
 });
 
+let refreshInFlight: Promise<void> | null = null;
+
+function refreshSession(): Promise<void> {
+    if (refreshInFlight) return refreshInFlight;
+
+    const promise = (async () => {
+        const { refreshToken } = await chrome.storage.local.get("refreshToken") as { refreshToken?: string };
+        if (!refreshToken) {
+            throw new Error("No refresh token found.");
+        }
+
+        const result = await trpcClient.refresh.mutate({ refreshTokens: refreshToken });
+        await chrome.storage.local.set({
+            accessToken: result.accessToken,
+            refreshToken: result.refreshToken ?? refreshToken
+        });
+    })();
+    refreshInFlight = promise;
+
+    void promise.then(
+        () => {
+            if (refreshInFlight === promise) refreshInFlight = null;
+        },
+        () => {
+            if (refreshInFlight === promise) refreshInFlight = null;
+        }
+    );
+    return promise;
+}
+
 function isUnauthorizedError(error: unknown): boolean {
     if (typeof error !== 'object' || error === null) return false;
 
@@ -79,18 +109,7 @@ async function handleFetch(sendResponse: (response: any) => void, lang: string) 
     catch (error: unknown) {
         if (isUnauthorizedError(error)) {
             try {
-                const { refreshToken } = await chrome.storage.local.get("refreshToken") as { refreshToken?: string };
-                if (!refreshToken) {
-                    await chrome.storage.local.remove(["accessToken", "refreshToken"]);
-                    sendResponse({ success: false, error: 'Please log in again.' });
-                    return;
-                }
-
-                const result = await trpcClient.refresh.mutate({ refreshTokens: refreshToken });
-                await chrome.storage.local.set({
-                    accessToken: result.accessToken,
-                    refreshToken: result.refreshToken
-                });
+                await refreshSession();
 
                 const [tab] = await chrome.tabs.query({
                     active: true,
@@ -153,17 +172,7 @@ async function handleAuthentication(sendResponse: (response: any) => void, actio
         }
 
         if (action === "refresh") {
-            const { refreshToken } = await chrome.storage.local.get("refreshToken") as { refreshToken?: string };
-            if (!refreshToken) {
-                sendResponse({ success: false, error: "No refresh token found." });
-                return;
-            }
-
-            const result = await trpcClient.refresh.mutate({ refreshTokens: refreshToken });
-            await chrome.storage.local.set({
-                accessToken: result.accessToken,
-                refreshToken: result.refreshToken ?? refreshToken
-            });
+            await refreshSession();
             sendResponse({ success: true });
             return;
         }
