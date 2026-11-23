@@ -1,5 +1,6 @@
 import { createTRPCProxyClient, httpBatchLink, type inferRouterProxyClient } from "@trpc/client";
 import type { youtubeRouterType } from "../../backend/src/youtubeRouter";
+import { languageSchema } from "../../shared/languages";
 
 export const trpcClient: inferRouterProxyClient<youtubeRouterType> = createTRPCProxyClient<youtubeRouterType>({
     links: [
@@ -67,6 +68,13 @@ function isUnauthorizedError(error: unknown): boolean {
 }
 
 async function handleFetch(sendResponse: (response: any) => void, lang: string) {
+    const languageResult = languageSchema.safeParse(lang);
+    if (!languageResult.success) {
+        sendResponse({ success: false, error: 'Please select a supported language.' });
+        return;
+    }
+    const language = languageResult.data;
+
     try {
         console.log('handleFetch routine started. Querying active tab...');
 
@@ -96,7 +104,7 @@ async function handleFetch(sendResponse: (response: any) => void, lang: string) 
 
         const response = await trpcClient.getTranscript.mutate({
             videoUrl: currentUrl,
-            language: lang
+            language
         })!;
 
         console.log('Mutation request completed. Backend response:', response?.output);
@@ -122,7 +130,7 @@ async function handleFetch(sendResponse: (response: any) => void, lang: string) 
 
                 const retryResponse = await trpcClient.getTranscript.mutate({
                     videoUrl: tab.url,
-                    language: lang
+                    language
                 });
                 sendResponse({
                     success: true,

@@ -1,4 +1,5 @@
 import { TRPCError } from "@trpc/server";
+import { SUPPORTED_LANGUAGES } from "../../../shared/languages";
 
 const btn = document.getElementById('btn');
 const output = document.getElementById('output');
@@ -6,6 +7,15 @@ const outputWrapper = document.getElementById('output-wrapper');
 const loader = document.getElementById('loader');
 const inputLang = document.getElementById('inputLanguage') as HTMLInputElement;
 
+const languageDatalist = document.createElement('datalist');
+languageDatalist.id = 'language-options';
+for (const language of SUPPORTED_LANGUAGES) {
+    const option = document.createElement('option');
+    option.value = language;
+    languageDatalist.appendChild(option);
+}
+inputLang?.setAttribute('list', languageDatalist.id);
+document.body.appendChild(languageDatalist);
 
 if (!btn || !output || !inputLang) {
     console.log("Required DOM elements ('btn' or 'output' or 'inputLang') were not found");
