@@ -7,6 +7,7 @@ import { createContext } from "./trpc.js";
 import { db } from "./db/index.js";
 import { refreshTokens } from "./db/drizzle/schema/schema.js";
 import { lt } from "drizzle-orm";
+import { config } from "./config.js";
 
 const fastify = Fastify({
     logger: true
@@ -24,7 +25,7 @@ fastify.addHook('onClose', async () => {
 const startServer = async () => {
     try {
         await fastify.register(fastifyCors, {
-            origin: process.env.ALLOWED_ORIGIN || '*',
+            origin: config.ALLOWED_ORIGIN,
             methods: ["GET", "POST", "OPTIONS"],
             allowedHeaders: ["Content-Type", "Authorization"]
         });

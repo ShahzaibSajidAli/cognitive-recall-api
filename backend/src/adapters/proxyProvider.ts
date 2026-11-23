@@ -1,23 +1,8 @@
 import { fetch as undiciFetch, ProxyAgent } from 'undici';
-import dotenv from 'dotenv';
-import fs from 'fs';
-import path from 'path';
+import { config } from '../config.js';
 
-const candidatePaths = [
-    path.resolve(process.cwd(), '.env'),
-    path.resolve(process.cwd(), '../.env'),
-];
-
-const localEnvPath = candidatePaths.find(p => fs.existsSync(p)) || candidatePaths[0];
-
-if (localEnvPath) {
-    dotenv.config({ path: localEnvPath });
-} else {
-    console.log('Production Environment Detected!. Using cloud injected variables.');
-}
-
-const SCRAPER_PROXY1 = process.env.SCRAPER_PROXY1?.trim();
-const SCRAPER_PROXY2 = process.env.SCRAPER_PROXY2?.trim();
+const SCRAPER_PROXY1 = config.SCRAPER_PROXY1?.trim();
+const SCRAPER_PROXY2 = config.SCRAPER_PROXY2?.trim();
 
 console.log(`[proxyProvider] SCRAPER_PROXY1 configured: ${Boolean(SCRAPER_PROXY1)}`);
 console.log(`[proxyProvider] SCRAPER_PROXY2 configured: ${Boolean(SCRAPER_PROXY2)}`);
@@ -32,8 +17,12 @@ function normalizeProxyUri(proxy: string | undefined, name: string): string {
         : `http://${proxy}`;
 }
 
-const scraperProxy1Uri = normalizeProxyUri(SCRAPER_PROXY1, 'SCRAPER_PROXY1');
-const scraperProxy2Uri = normalizeProxyUri(SCRAPER_PROXY2, 'SCRAPER_PROXY2');
+const scraperProxy1Uri = SCRAPER_PROXY1
+    ? normalizeProxyUri(SCRAPER_PROXY1, 'SCRAPER_PROXY1')
+    : 'http://127.0.0.1:9';
+const scraperProxy2Uri = SCRAPER_PROXY2
+    ? normalizeProxyUri(SCRAPER_PROXY2, 'SCRAPER_PROXY2')
+    : 'http://127.0.0.1:9';
 // Fetch API Key from the URI if present
 function fetchApiKeyFromUri(uri: string | undefined): string | undefined {
     const url = new URL(uri!);

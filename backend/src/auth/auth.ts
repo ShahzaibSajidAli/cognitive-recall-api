@@ -2,26 +2,10 @@ import { SignJWT, jwtVerify } from "jose";
 import { refreshTokens } from "../db/drizzle/schema/schema.js";
 import { db } from "../db/index.js";
 import * as crypto from "crypto";
-import fs from "fs";
-import path from "path";
-import dotenv from "dotenv";
+import { config } from "../config.js";
 
-const candidatePaths = [
-    path.resolve(process.cwd(), '.env'),
-    path.resolve(process.cwd(), '../../../.env'),
-]
-
-const localEnvPath = candidatePaths.find(p => fs.existsSync(p)) || candidatePaths[0];
-
-if (localEnvPath) {
-    dotenv.config({ path: localEnvPath });
-}
-else {
-    console.log("Production Environment Detected!. Using cloud injected variables.")
-}
-
-const ACCESS_KEY = new TextEncoder().encode(process.env.JWT_ACCESS_SECRET!);
-const REFRESH_KEY = new TextEncoder().encode(process.env.JWT_REFRESH_SECRET!);
+const ACCESS_KEY = new TextEncoder().encode(config.JWT_ACCESS_SECRET);
+const REFRESH_KEY = new TextEncoder().encode(config.JWT_REFRESH_SECRET);
 
 export interface RefreshPayload {
     userId: string;

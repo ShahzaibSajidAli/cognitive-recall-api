@@ -11,6 +11,7 @@ import { createSession } from "./auth/auth.js";
 import { hash, verify, argon2id } from 'argon2';
 import { refreshTokens } from './db/drizzle/schema/schema.js';
 import { verifyRefreshToken } from './auth/auth.js';
+import { config } from './config.js';
 // For Mock Testing
 const rand = (min: number, max: number) =>
     min + Math.random() * (max - min);
@@ -246,7 +247,7 @@ export const youtubeRouter = router({
                 const intervalSeconds = 60;
                 let currentBucket = -1;
                 const { videoUrl, language } = input;
-                if (process.env.MOCK_TRANSCRIPT === 'true') {
+                if (config.MOCK_TRANSCRIPT === 'true') {
                     await mockDelay(4000, 9000);
                     const mockTranscript = typescriptTranscript;
                     const transcriptText = mockTranscript.reduce((acc, item) => {

@@ -1,34 +1,9 @@
 import { generateText, Output } from 'ai';
 import { createGoogleGenerativeAI } from '@ai-sdk/google';
-import fs from 'fs';
-import path from 'path';
-import dotenv from 'dotenv';
 import z from 'zod';
 import { setTimeout } from 'timers/promises';
 import { typescriptTranscriptQuestions } from './mockfiles/mockAiResponse.js';
-
-
-// const __filename = fileURLToPath(import.meta.url)
-// const __dirname = path.dirname(__filename);
-const candidatePaths = [
-    path.resolve(process.cwd(), '.env'),
-    path.resolve(process.cwd(), '../.env'),
-]
-
-const localEnvPath = candidatePaths.find(p => fs.existsSync(p)) || candidatePaths[0];
-
-if (localEnvPath) {
-    dotenv.config({ path: localEnvPath });
-}
-else {
-    console.log("Production Environment Detected!. Using cloud injected variables.")
-}
-
-if (!process.env.GEMINI_API_KEY) {
-    console.error("❌ Error: GEMINI_API_KEY is missing. Check your parent directory's .env file.");
-    console.error(`Attempted to read from: ${path.resolve(process.cwd(), '.env')}`);
-    process.exit(1);
-}
+import { config } from './config.js';
 
 const rand = (min: number, max: number) =>
     min + Math.random() * (max - min);
@@ -38,7 +13,7 @@ async function mockDelay(min: number, max: number) {
     await new Promise<void>((resolve) => globalThis.setTimeout(() => resolve(), ms));
 }
 const geminiAI = createGoogleGenerativeAI({
-    apiKey: process.env.GEMINI_API_KEY!
+    apiKey: config.GEMINI_API_KEY
 });
 
 const aiModel = geminiAI("gemini-3.1-flash-lite");
@@ -160,7 +135,7 @@ const mockTranscriptQuestionsData = {
 };
 
 export const aiResponseForTranscript = async (transcript: string, language: string) => {
-    if (process.env.MOCK_AI === 'true') {
+    if (config.MOCK_AI === 'true') {
         await mockDelay(5000, 15000);
         return {
             questions: {
@@ -227,7 +202,7 @@ export const aiResponseForTranscript = async (transcript: string, language: stri
 };
 
 export const aiResponseForFollowUp = async (answers: any[], originalQuestions: any[], followUpQuestions: string[]) => {
-    if (process.env.MOCK_AI === 'true') {
+    if (config.MOCK_AI === 'true') {
         await mockDelay(5000, 15000);
         return mockTranscriptQuestionsData;
     }
