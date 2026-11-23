@@ -32,7 +32,7 @@ const startServer = async () => {
 
         await fastify.register(fastifyRateLimit, {
             global: true,
-            max: 100,
+            max: config.RATE_LIMIT_MAX,
             timeWindow: '1 minute'
         });
 
@@ -43,10 +43,17 @@ const startServer = async () => {
         });
 
         fastify.addHook('preHandler', async (request, reply) => {
-            if (/\/trpc\/(login|signUp)(?:[/?]|$)/.test(request.url)) {
+            const queryIndex = request.url.indexOf('?');
+            const pathname = queryIndex >= 0 ? request.url.slice(0, queryIndex) : request.url;
+            const procedurePath = pathname.startsWith('/trpc/')
+                ? pathname.slice('/trpc/'.length)
+                : '';
+            const procedures = procedurePath.split(',');
+
+            if (procedures.includes('login') || procedures.includes('signUp')) {
                 const result = await authRateLimit(request);
                 if (!result.isAllowed) {
-                    await reply.code(429).send({
+                    return reply.code(429).send({
                         error: 'Too Many Requests'
                     });
                 }
