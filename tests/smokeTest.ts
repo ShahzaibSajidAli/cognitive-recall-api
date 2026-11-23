@@ -1,6 +1,7 @@
 import http from 'k6/http';
 import {check, sleep} from 'k6';
 
+// Load testing may hit the server's global 100 requests/minute limit; raise RATE_LIMIT_MAX in config.
 const endpoint = `${__ENV.PUBLIC_IP}/trpc/getTranscript`;
 const loginEndpoint = `${__ENV.PUBLIC_IP}/trpc/login`;
 const payload = JSON.stringify({
@@ -31,8 +32,17 @@ export function setup() {
         'login returned 200': (response) => response.status === 200
     });
 
-    const result = loginResponse.json<{ data: { accessToken: string } }>();
-    return { accessToken: result.data.accessToken };
+    const result = loginResponse.json<{
+        result: { data: { accessToken: string } }
+    }>();
+    const accessToken = result.result?.data?.accessToken;
+    check(accessToken, {
+        'login returned a non-empty access token': (token) => typeof token === 'string' && token.length > 0
+    });
+    if (typeof accessToken !== 'string' || accessToken.length === 0) {
+        throw new Error('Login response did not include a non-empty accessToken');
+    }
+    return { accessToken };
 }
 
 export default (data: { accessToken: string }) => {
