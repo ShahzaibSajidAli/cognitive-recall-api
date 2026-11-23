@@ -99,11 +99,21 @@ function buildTranscriptOutput(
     };
 }
 
+function isUniqueViolation(error: unknown): boolean {
+    if (typeof error !== 'object' || error === null) return false;
+    if ('code' in error && error.code === '23505') return true;
+    if ('cause' in error) {
+        const cause = error.cause;
+        return typeof cause === 'object' && cause !== null && 'code' in cause && cause.code === '23505';
+    }
+    return false;
+}
+
 export const youtubeRouter = router({
     signUp: publicProcedure
         .input(
             z.object({
-                username: z.string().min(5, { message: 'Username cannot be empty' }).trim(),
+                username: z.string().min(5, { message: 'Username must be at least 5 characters' }).trim(),
                 email: z.email().trim().toLowerCase(),
                 password: z.string().min(8)
             })
@@ -111,12 +121,22 @@ export const youtubeRouter = router({
             const { username, email, password } = input;
             const hashedPassword = await hash(password, { type: argon2id });
 
-            const [newUser] = await ctx.db.insert(users).values([{
-                username: username,
-                email: email,
-                password: hashedPassword
-            } as any])
-                .returning({ id: users.id, email: users.email });
+            let newUser: { id: string; email: string } | undefined;
+            try {
+                [newUser] = await ctx.db.insert(users).values({
+                    username: username,
+                    email: email,
+                    password: hashedPassword
+                }).returning({ id: users.id, email: users.email });
+            } catch (error) {
+                if (isUniqueViolation(error)) {
+                    throw new TRPCError({
+                        code: 'CONFLICT',
+                        message: 'Email already registered'
+                    });
+                }
+                throw error;
+            }
             const { accessToken, refreshToken } = await createSessionAndSetCookies(newUser!.id)
             return {
                 success: true,
