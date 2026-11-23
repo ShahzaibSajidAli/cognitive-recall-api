@@ -15,13 +15,15 @@ const envSchema = z.object({
     DATABASE_URL: z.string().min(1, 'DATABASE_URL is required'),
     JWT_ACCESS_SECRET: z.string().min(32, 'JWT_ACCESS_SECRET must be at least 32 characters'),
     JWT_REFRESH_SECRET: z.string().min(32, 'JWT_REFRESH_SECRET must be at least 32 characters'),
-    GEMINI_API_KEY: z.string().min(1, 'GEMINI_API_KEY is required'),
+    GEMINI_API_KEY: z.string().min(1).optional(),
     SCRAPER_PROXY1: z.string().min(1).optional(),
     SCRAPER_PROXY2: z.string().min(1).optional(),
     ALLOWED_ORIGIN: z.string().min(1).default('*'),
     MOCK_TRANSCRIPT: z.enum(['true', 'false']).default('false'),
     MOCK_AI: z.enum(['true', 'false']).default('false'),
-    DATABASE_CA_CERT: z.string().min(1).optional()
+    DATABASE_CA_CERT_PATH: z.string().min(1).optional(),
+    NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
+    RATE_LIMIT_MAX: z.coerce.number().int().positive().default(100)
 }).superRefine((value, ctx) => {
     if (value.MOCK_TRANSCRIPT !== 'true') {
         if (!value.SCRAPER_PROXY1) {
@@ -38,6 +40,13 @@ const envSchema = z.object({
                 message: 'SCRAPER_PROXY2 is required when MOCK_TRANSCRIPT is not true'
             });
         }
+    }
+    if (value.MOCK_AI !== 'true' && !value.GEMINI_API_KEY) {
+        ctx.addIssue({
+            code: 'custom',
+            path: ['GEMINI_API_KEY'],
+            message: 'GEMINI_API_KEY is required when MOCK_AI is not true'
+        });
     }
 });
 

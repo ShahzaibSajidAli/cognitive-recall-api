@@ -13,7 +13,7 @@ async function mockDelay(min: number, max: number) {
     await new Promise<void>((resolve) => globalThis.setTimeout(() => resolve(), ms));
 }
 const geminiAI = createGoogleGenerativeAI({
-    apiKey: config.GEMINI_API_KEY
+    apiKey: config.GEMINI_API_KEY ?? ''
 });
 
 const aiModel = geminiAI("gemini-3.1-flash-lite");
