@@ -4,10 +4,22 @@ import fastifyRateLimit from "@fastify/rate-limit";
 import { fastifyTRPCPlugin } from "@trpc/server/adapters/fastify";
 import { youtubeRouter } from "./youtubeRouter.js";
 import { createContext } from "./trpc.js";
+import { db } from "./db/index.js";
+import { refreshTokens } from "./db/drizzle/schema/schema.js";
+import { lt } from "drizzle-orm";
 
 const fastify = Fastify({
     logger: true
 })
+
+const refreshTokenCleanupInterval = setInterval(async () => {
+    await db.delete(refreshTokens).where(lt(refreshTokens.expiresAt, new Date()));
+}, 60 * 60 * 1000);
+refreshTokenCleanupInterval.unref();
+
+fastify.addHook('onClose', async () => {
+    clearInterval(refreshTokenCleanupInterval);
+});
 
 const startServer = async () => {
     try {
