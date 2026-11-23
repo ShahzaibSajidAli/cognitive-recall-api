@@ -22,6 +22,7 @@ async function mockDelay(min: number, max: number) {
 
 const YOUTUBE_INNERTUBE_URL = 'https://www.youtube.com/youtubei/v1/player?prettyPrint=false';
 const YOUTUBE_INNERTUBE_CLIENT_VERSION = '20.10.38';
+const DUMMY_ARGON2ID_HASH = '$argon2id$v=19$m=65536,t=3,p=4$tq+WSYZUCUPlxr9xDH4xFQ$wQPh4FeAmb655IJ/szkD2JtuTkYGIPPlBir6Nj3ebaU';
 
 function extractYoutubeVideoId(videoUrl: string): string | undefined {
     const match = videoUrl.match(
@@ -133,6 +134,7 @@ export const youtubeRouter = router({
                 const [fetchUser] = await ctx.db.select().from(users).where(eq(users.email, email));
 
                 if (!fetchUser) {
+                    await verify(DUMMY_ARGON2ID_HASH, password);
                     throw new TRPCError({
                         code: 'UNAUTHORIZED', message: 'Invalid Email or Password'
                     })
