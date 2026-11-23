@@ -34,7 +34,7 @@ function refreshSession(): Promise<void> {
             throw new Error("No refresh token found.");
         }
 
-        const result = await trpcClient.refresh.mutate({ refreshTokens: refreshToken });
+        const result = await trpcClient.refresh.mutate({ refreshToken });
         await chrome.storage.local.set({
             accessToken: result.accessToken,
             refreshToken: result.refreshToken ?? refreshToken

@@ -190,10 +190,10 @@ export const youtubeRouter = router({
         }),
     refresh: publicProcedure.input(
         z.object({
-            refreshTokens: z.string(),
+            refreshToken: z.string(),
         })
     ).mutation(async ({ ctx, input }) => {
-        const payload = await verifyRefreshToken(input.refreshTokens);
+        const payload = await verifyRefreshToken(input.refreshToken);
 
         if (!payload) {
             throw new TRPCError({
