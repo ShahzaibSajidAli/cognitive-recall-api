@@ -6,7 +6,7 @@ import { TRPCError } from '@trpc/server';
 import { typescriptTranscript } from './mockfiles/mockTranscript.js';
 import { proxiedFetch } from './adapters/proxyProvider.js';
 import { eq, and } from 'drizzle-orm';
-import { users, videos } from './db/drizzle/schema/schema.js';
+import { users, videos, type TranscriptOutput, type VideoQuestions } from './db/drizzle/schema/schema.js';
 import { createSessionAndSetCookies } from "./auth/auth.js";
 import { hash, verify, argon2id } from 'argon2';
 import { refreshTokens } from './db/drizzle/schema/schema.js';
@@ -86,6 +86,16 @@ async function inspectInnerTubeMetadata(videoUrl: string) {
     } catch (error) {
         console.error('[youtube-debug] InnerTube metadata request failed:', error);
     }
+}
+
+function buildTranscriptOutput(
+    questions: VideoQuestions,
+    educational: boolean
+): TranscriptOutput {
+    return {
+        educational,
+        questions
+    };
 }
 
 export const youtubeRouter = router({
@@ -222,9 +232,15 @@ export const youtubeRouter = router({
                         return `${acc} ${item.text}`
                     }, "").trim();
                     const aiOutput = await aiResponseForTranscript(transcriptText, language);
+                    if (!aiOutput) {
+                        throw new Error('Failed to generate questions from transcript.');
+                    }
                     return {
                         success: true,
-                        output: aiOutput,
+                        output: buildTranscriptOutput(
+                            aiOutput.questions,
+                            !('educational' in aiOutput) || aiOutput.educational
+                        ),
                         message: language
                     }
 
@@ -278,7 +294,10 @@ export const youtubeRouter = router({
                             console.log('AI output generated and returned:', aiOutput);
                             return {
                                 success: true,
-                                output: aiOutput,
+                                output: buildTranscriptOutput(
+                                    aiOutput.questions,
+                                    !('educational' in aiOutput) || aiOutput.educational
+                                ),
                                 message: innerTubeRequest!.languageCode
                             }
                         }
@@ -293,14 +312,11 @@ export const youtubeRouter = router({
                         // If the video already exists in the database, return the stored questions and coding practices
                         const response = {
                             success: true,
-                            output: {
-                                questions: existingVideo.questions.general,
-                                codingPractices: existingVideo.questions.coding
-                            },
+                            output: buildTranscriptOutput(existingVideo.questions, true),
                             message: 'Retrieved from database'
                         };
 
-                        console.log('Video already exists in the database. Returning stored questions and coding practices. Questions:', response.output.questions, 'Coding Practices:', response.output.codingPractices
+                        console.log('Video already exists in the database. Returning stored questions and coding practices. Questions:', response.output.questions.general, 'Coding Practices:', response.output.questions.coding
                         );
                         return response;
                     }

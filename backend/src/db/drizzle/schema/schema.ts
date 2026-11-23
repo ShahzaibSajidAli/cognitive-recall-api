@@ -86,6 +86,11 @@ export type VideoQuestions = {
   coding: { task: string; code: string; lang: string; filename: string }[];
 };
 
+export type TranscriptOutput = {
+  educational: boolean;
+  questions: VideoQuestions;
+};
+
 export const videos = pgTable("videos", {
   videoId: varchar("video_id", { length: 255 }).notNull(),
   language: varchar("language", { length: 255 }).notNull(),
