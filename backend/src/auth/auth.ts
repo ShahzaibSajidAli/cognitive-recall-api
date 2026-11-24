@@ -12,6 +12,9 @@ export interface RefreshPayload {
     tokenId: string; // Maps to a record in your DB for revocation/rotation
 }
 
+export const hashRefreshToken = (token: string): string =>
+    crypto.createHash("sha256").update(token).digest("hex");
+
 export const createAccessToken = async (userId: string): Promise<string> => {
     return await new SignJWT({ userId })
         .setProtectedHeader({ alg: 'HS256' })
@@ -53,20 +56,24 @@ export const verifyRefreshToken = async (token?: string): Promise<RefreshPayload
 export async function createSession(
     userId: string // Change to `string` if your users.id is a uuid
 ) {
-    // 1. Save a new refresh token session in PostgreSQL
     const tokenId = crypto.randomUUID();
+    const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+    const accessToken = await createAccessToken(String(userId));
+    const refreshToken = await createRefreshToken(String(userId), tokenId);
+
+    if (!refreshToken) {
+        throw new Error("Failed to create refresh token");
+    }
+
     const [session] = await db
         .insert(refreshTokens)
         .values({
             id: tokenId,
             userId: userId,
-            expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days
+            tokenHash: hashRefreshToken(refreshToken),
+            expiresAt,
         })
         .returning({ id: refreshTokens.id });
 
-    // 2. Sign both JWTs
-    const accessToken = await createAccessToken(String(userId));
-    const refreshToken = await createRefreshToken(String(userId), session!.id);
-
-    return { accessToken, refreshToken };
+    return { accessToken, refreshToken, sessionId: session!.id };
 }

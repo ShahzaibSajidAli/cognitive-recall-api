@@ -18,6 +18,7 @@ export const refreshTokens = pgTable(
       .references(() => users.id, {
         onDelete: "cascade",
       }),
+    tokenHash: text("token_hash").notNull(),
     expiresAt: timestamp("expires_at").notNull(),
   },
   (table) => [

@@ -7,7 +7,7 @@ import { typescriptTranscript } from './mockfiles/mockTranscript.js';
 import { proxiedFetch } from './adapters/proxyProvider.js';
 import { eq, and } from 'drizzle-orm';
 import { users, videos, type TranscriptOutput, type VideoQuestions } from './db/drizzle/schema/schema.js';
-import { createSession, createAccessToken } from "./auth/auth.js";
+import { createSession, createAccessToken, hashRefreshToken } from "./auth/auth.js";
 import { hash, verify, argon2id } from 'argon2';
 import { refreshTokens } from './db/drizzle/schema/schema.js';
 import { verifyRefreshToken } from './auth/auth.js';
@@ -205,7 +205,10 @@ export const youtubeRouter = router({
         const [session] = await ctx.db
             .select()
             .from(refreshTokens)
-            .where(eq(refreshTokens.id, payload.tokenId));
+            .where(and(
+                eq(refreshTokens.id, payload.tokenId),
+                eq(refreshTokens.tokenHash, hashRefreshToken(input.refreshToken))
+            ));
 
         if (!session) {
             await ctx.db.delete(refreshTokens).where(eq(refreshTokens.userId, payload.userId));
@@ -225,7 +228,7 @@ export const youtubeRouter = router({
             });
         }
 
-        const accessToken = createAccessToken(payload.userId);
+        const accessToken = await createAccessToken(payload.userId);
         const refreshToken = input.refreshToken;
 
         return {
