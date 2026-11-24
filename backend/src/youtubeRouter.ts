@@ -226,7 +226,7 @@ export const youtubeRouter = router({
         }
 
         const accessToken = createAccessToken(payload.userId);
-        const refreshToken = payload.tokenId;
+        const refreshToken = input.refreshToken;
 
         return {
             success: true,
