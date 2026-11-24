@@ -7,7 +7,7 @@ import { typescriptTranscript } from './mockfiles/mockTranscript.js';
 import { proxiedFetch } from './adapters/proxyProvider.js';
 import { eq, and } from 'drizzle-orm';
 import { users, videos, type TranscriptOutput, type VideoQuestions } from './db/drizzle/schema/schema.js';
-import { createSession } from "./auth/auth.js";
+import { createSession, createAccessToken } from "./auth/auth.js";
 import { hash, verify, argon2id } from 'argon2';
 import { refreshTokens } from './db/drizzle/schema/schema.js';
 import { verifyRefreshToken } from './auth/auth.js';
@@ -225,10 +225,8 @@ export const youtubeRouter = router({
             });
         }
 
-        // Rotate the refresh session: revoke the old one before creating a replacement.
-        await ctx.db.delete(refreshTokens).where(eq(refreshTokens.id, payload.tokenId));
-
-        const { accessToken, refreshToken } = await createSession(payload.userId);
+        const accessToken = createAccessToken(payload.userId);
+        const refreshToken = payload.tokenId;
 
         return {
             success: true,
