@@ -56,7 +56,7 @@ async function inspectInnerTubeMetadata(videoUrl: string) {
                 },
                 videoId
             })
-        }); 
+        });
         const body: unknown = await response.json();
         const playerResponse = body && typeof body === 'object'
             ? body as {
@@ -230,7 +230,7 @@ export const youtubeRouter = router({
 
         const accessToken = await createAccessToken(payload.userId);
         const refreshToken = await createRefreshToken(payload.userId, payload.tokenId);
-        await ctx.
+        await ctx.db
             .update(refreshTokens)
             .set({ tokenHash: hashRefreshToken(refreshToken!), expiresAt: session.expiresAt })
             .where(and(
@@ -248,7 +248,7 @@ export const youtubeRouter = router({
         .input(
             z.object({
                 videoUrl: z.string().min(1, { message: 'URL cannot be empty' }),
-                language: z.enum(SUPPORTED_LANGUAGES) 
+                language: z.enum(SUPPORTED_LANGUAGES)
             })
         )
         .mutation(async ({ ctx, input }) => {
