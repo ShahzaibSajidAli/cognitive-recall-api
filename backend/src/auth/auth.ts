@@ -65,7 +65,7 @@ export async function createSession(
         throw new Error("Failed to create refresh token");
     }
 
-    const [session] = await db
+    await db
         .insert(refreshTokens)
         .values({
             id: tokenId,
@@ -73,7 +73,6 @@ export async function createSession(
             tokenHash: hashRefreshToken(refreshToken),
             expiresAt,
         })
-        .returning({ id: refreshTokens.id });
 
-    return { accessToken, refreshToken, sessionId: session!.id };
+    return { accessToken, refreshToken };
 }
