@@ -22,9 +22,10 @@ export const createAccessToken = async (userId: string): Promise<string> => {
         .sign(ACCESS_KEY)
 }
 
-export const createRefreshToken = async (userId: string, tokenId: string): Promise<string | null> => {
+export const createRefreshToken = async (userId: string, tokenId: string): Promise<string> => {
     return await new SignJWT({ userId, tokenId })
         .setProtectedHeader({ alg: 'HS256' })
+        .setJti(crypto.randomUUID())
         .setExpirationTime('7d')
         .sign(REFRESH_KEY)
 }
@@ -60,10 +61,6 @@ export async function createSession(
     const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
     const accessToken = await createAccessToken(String(userId));
     const refreshToken = await createRefreshToken(String(userId), tokenId);
-
-    if (!refreshToken) {
-        throw new Error("Failed to create refresh token");
-    }
 
     await db
         .insert(refreshTokens)

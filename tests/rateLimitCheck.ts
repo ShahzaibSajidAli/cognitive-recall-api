@@ -1,8 +1,8 @@
 const baseUrl = process.env.BASE_URL ?? 'http://localhost:3000';
 
-async function checkRoute(label: string, url: string) {
+async function checkRoute(label: string, url: string, requestCount = 6) {
     console.log(label);
-    for (let requestNumber = 1; requestNumber <= 6; requestNumber++) {
+    for (let requestNumber = 1; requestNumber <= requestCount; requestNumber++) {
         const response = await fetch(url, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -14,6 +14,7 @@ async function checkRoute(label: string, url: string) {
 
 await checkRoute('Direct login:', `${baseUrl}/trpc/login`);
 await checkRoute(
-    'Batched refresh/login:',
-    `${baseUrl}/trpc/refresh,login?batch=1`
+    'Batched refresh/logout (crosses 30/min limit):',
+    `${baseUrl}/trpc/refresh,logout?batch=1`,
+    31
 );

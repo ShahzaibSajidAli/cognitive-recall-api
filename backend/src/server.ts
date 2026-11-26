@@ -45,6 +45,11 @@ const startServer = async () => {
             timeWindow: '1 minute',
             keyGenerator: (request) => request.ip
         });
+        const sessionRateLimit = fastify.createRateLimit({
+            max: 30,
+            timeWindow: '1 minute',
+            keyGenerator: (request) => request.ip
+        });
 
         fastify.addHook('preHandler', async (request, reply) => {
             const queryIndex = request.url.indexOf('?');
@@ -56,6 +61,15 @@ const startServer = async () => {
 
             if (procedures.includes('login') || procedures.includes('signUp')) {
                 const result = await authRateLimit(request);
+                if (!result.isAllowed) {
+                    return reply.code(429).send({
+                        error: 'Too Many Requests'
+                    });
+                }
+            }
+
+            if (procedures.includes('refresh') || procedures.includes('logout')) {
+                const result = await sessionRateLimit(request);
                 if (!result.isAllowed) {
                     return reply.code(429).send({
                         error: 'Too Many Requests'

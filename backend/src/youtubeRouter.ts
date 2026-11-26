@@ -5,7 +5,7 @@ import { aiResponseForTranscript, aiResponseForFollowUp } from './aiResponser.js
 import { TRPCError } from '@trpc/server';
 import { typescriptTranscript } from './mockfiles/mockTranscript.js';
 import { proxiedFetch } from './adapters/proxyProvider.js';
-import { eq, and } from 'drizzle-orm';
+import { eq, and, gt } from 'drizzle-orm';
 import { users, videos, type TranscriptOutput, type VideoQuestions } from './db/drizzle/schema/schema.js';
 import { createSession, createAccessToken, hashRefreshToken, createRefreshToken } from "./auth/auth.js";
 import { hash, verify, argon2id } from 'argon2';
@@ -202,26 +202,33 @@ export const youtubeRouter = router({
             });
         }
 
-        const [session] = await ctx.db
-            .select()
-            .from(refreshTokens)
+        const refreshToken = await createRefreshToken(payload.userId, payload.tokenId);
+        const refreshTokenHash = hashRefreshToken(refreshToken);
+        const now = new Date();
+        const [rotatedSession] = await ctx.db
+            .update(refreshTokens)
+            .set({ tokenHash: refreshTokenHash })
             .where(and(
                 eq(refreshTokens.id, payload.tokenId),
-                eq(refreshTokens.tokenHash, hashRefreshToken(input.refreshToken))
-            ));
+                eq(refreshTokens.userId, payload.userId),
+                eq(refreshTokens.tokenHash, hashRefreshToken(input.refreshToken)),
+                gt(refreshTokens.expiresAt, now)
+            ))
+            .returning({ id: refreshTokens.id });
 
-        if (!session) {
-            await ctx.db.delete(refreshTokens).where(eq(refreshTokens.userId, payload.userId));
-            throw new TRPCError({
-                code: 'UNAUTHORIZED',
-                message: 'Refresh session is invalid or expired'
-            });
-        }
+        if (!rotatedSession) {
+            const [session] = await ctx.db
+                .select({ expiresAt: refreshTokens.expiresAt })
+                .from(refreshTokens)
+                .where(and(
+                    eq(refreshTokens.id, payload.tokenId),
+                    eq(refreshTokens.userId, payload.userId)
+                ));
 
-        if (
-            session.userId !== payload.userId ||
-            session.expiresAt <= new Date()
-        ) {
+            if (session && session.expiresAt > now) {
+                await ctx.db.delete(refreshTokens).where(eq(refreshTokens.userId, payload.userId));
+            }
+
             throw new TRPCError({
                 code: 'UNAUTHORIZED',
                 message: 'Refresh session is invalid or expired'
@@ -229,14 +236,6 @@ export const youtubeRouter = router({
         }
 
         const accessToken = await createAccessToken(payload.userId);
-        const refreshToken = await createRefreshToken(payload.userId, payload.tokenId);
-        await ctx.db
-            .update(refreshTokens)
-            .set({ tokenHash: hashRefreshToken(refreshToken!), expiresAt: session.expiresAt })
-            .where(and(
-                eq(refreshTokens.id, payload.tokenId),
-                eq(refreshTokens.userId, payload.userId)
-            ));
 
         return {
             success: true,
